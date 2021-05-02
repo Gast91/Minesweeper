@@ -1,5 +1,8 @@
 package minesweeper;
 
+import minesweeper.game.cells.CellValue;
+import minesweeper.game.cells.MinesweeperButton;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
@@ -46,13 +49,11 @@ import javax.swing.Timer;
 
 import static minesweeper.utility.Icon.*;
 
-public class Minesweeper extends JFrame
-{
+public class Minesweeper extends JFrame {
     private JPanel cellPanel, banner;
     private JButton statusIndicator;
     private JLabel timeIndicator, bombIndicator;
     private JMenu diffMenu;
-    private Color col;
     private int rows, cols, bombs, bombsMarked = 0, seconds = 0, difficulty = 2;    //SIZE OF GRID (ROWS * COLS) - AMOUNT OF BOMBS IN GAME - BOMBS MARKED BY THE USER - SECONDS ELAPSED - DIFFICULTY PRESET(SEE SETDIFFICULTY FUNCTION)
     private int[] bombLoc;                                                         //ARRAY FOR THE LOCATION OF EACH BOMB
     private MinesweeperButton[] cells;                                            //ARRAY THAT STORES ALL THE CELLS
@@ -580,7 +581,7 @@ public class Minesweeper extends JFrame
             if ( neighborsPositions[i] != -1 && cells[neighborsPositions[i]].isFlagged())
                 flagged++;
         }
-        if (flagged >= Integer.parseInt(((MinesweeperButton)e.getSource()).getName()))
+        if (flagged >= ((MinesweeperButton)e.getSource()).getValue().asInt())
         {
             for (int n : neighborsPositions)
             {
@@ -629,8 +630,7 @@ public class Minesweeper extends JFrame
             //If the above condition is satisfied and if the cell does not already contain a bomb, assign one to it
             if (isValid(e, r) && !cells[r].isBomb())
             {
-                    cells[r].setName("X");
-                    cells[r].setBomb(true);
+                    cells[r].setValue(CellValue.BOMB);
                     bombLoc[bombs-1] = r;
                     bombs--;
             }
@@ -651,69 +651,51 @@ public class Minesweeper extends JFrame
         }
         return true;
     }
-        
-    //Updates each cell's name depending on how many adjacent bombs there are    
+
+    // Update each cell's value depending on how many adjacent bombs there are
     private void configCells()
     {
         for (int k : bombLoc) {
             for (int j = 0; j < 8; j++) {
                 int[] neighborsPositions = cells[k].getNeighborsPositions();
                 if (neighborsPositions[j] != -1 && !cells[neighborsPositions[j]].isBomb())
-                    cells[neighborsPositions[j]].setName(Integer.toString(Integer.parseInt(cells[neighborsPositions[j]].getName()) + 1));
+                    cells[neighborsPositions[j]].incrementValue();
             }
         }
     }
-    
-    //Reveals the cell clicked by the user and changes the visuals of the cell depending on its Name value
+
+    // Reveal the cell clicked by the user and change the visuals of the cell depending on its value
     private void revealCell(int loc)
     {
-        switch (cells[loc].getName()) {
-            case "X" -> {
-                if (cells[loc].getIcon() == null)
-                    cells[loc].setIcon(BOMB.getIcon());
-                else if (cells[loc].isFlagged())
-                    cells[loc].setIcon(BOMB_DEFUSED.getIcon());
-                cells[loc].setBackground(new Color(222, 219, 219));    //LIGHT_GRAY
-                cells[loc].setRevealed(true);
-                return;
-            }
-            case "0" -> {
-                cells[loc].setBackground(new Color(222, 219, 219));  //LIGHT_GRAY
-                cells[loc].setEnabled(false);
-                cells[loc].setRevealed(true);
-                //If the revealNeighbors method is already running for the current empty cell, ignore it. Else, it means a new empty cell is ready to be processed, so restart the process
-                if (!running) {
-                    revealNeighbors(loc);
+        MinesweeperButton cell = cells[loc];
+        cell.setBackground(new Color(222, 219, 219));
+        cell.setRevealed(true);
+
+        if (cell.isBomb()) {
+            if (cell.getIcon() == null) cell.setIcon(BOMB.getIcon());
+            else if (cell.isFlagged())  cell.setIcon(BOMB_DEFUSED.getIcon());
+        } else if (cell.isEmpty()) {
+            cell.setEnabled(false);
+            revealNeighbors(loc);
+        } else {
+            cell.setText(cell.getValue().getText());
+            cell.setForeground(cell.getValue().getTextColor());
+            // Disable the select highlight
+            cell.setRolloverEnabled(false);
+            // Override the isPressed() method of the default button model to prevent it from ever identifying the button as clicked/mimicking setEnabled()
+            cell.setModel(new javax.swing.DefaultButtonModel(){
+                @Override
+                public boolean isPressed() {
+                    return false;
                 }
-                return;
-            }
-            case "1" -> col = Color.blue;
-            case "2" -> col = new Color(0, 153, 0);      //LIGHT_GREEN (somewhat)
-            case "3" -> col = Color.red;
-            case "4" -> col = new Color(77, 176, 230);  //LIGHT_BLUE
-            case "5" -> col = new Color(153, 0, 0);    //DARK_RED (somewhat)
-            case "6" -> col = Color.cyan;
-            case "7" -> col = Color.black;
-            case "8" -> col = Color.gray;
+            });
         }
-        cells[loc].setText(cells[loc].getName());
-        cells[loc].setForeground(col);
-        cells[loc].setBackground(new Color(222, 219, 219));  //LIGHT_GRAY
-        cells[loc].setRevealed(true);
-        cells[loc].setRolloverEnabled(false);               //DISABLE THE SELECT HIGHTLIGHT
-        cells[loc].setModel(new javax.swing.DefaultButtonModel(){
-            
-            @Override
-            public boolean isPressed() 
-            {
-                return false;
-            }
-        }); //OVERRIDE THE ISPRESSED METHOD OF THE DEFAULT BUTTON MODEL TO PREVENT IT FROM EVER IDENTIFYING THE BUTTON AS CLICKED/MIMICKING SETENABLED()
     }
     
     //When an empty cell is clicked, check its eligible neighbors and whether they are already revealed or not and reveal them
-    private void revealNeighbors(int loc)
-    {
+    private void revealNeighbors(int loc) {
+        if (running) return;
+
         //Flag to avoid infinite recursion over the same elements in the list
         running = true;
 
@@ -722,7 +704,7 @@ public class Minesweeper extends JFrame
         {
             if (neighborsPositions[i] != -1)
             {
-                if (cells[neighborsPositions[i]].getName().equals("0") && !cells[neighborsPositions[i]].isRevealed())
+                if (cells[neighborsPositions[i]].shouldRevealNeighbors())
                     emptyCells.add(cells[neighborsPositions[i]]);
                 revealCell(neighborsPositions[i]);
             }
@@ -762,19 +744,8 @@ public class Minesweeper extends JFrame
             setLocationRelativeTo(null);
         }
         else  //If the difficulty is still the same, just reset the values of every cell's properties
-        {
-            for (int i = 0; i < rows * cols; i++)
-            {
-                cells[i].setName("0");
-                cells[i].setText("");
-                cells[i].setBackground(null);
-                cells[i].setIcon(null);
-                cells[i].setBomb(false);
-                cells[i].setRevealed(false);
-                cells[i].setEnabled(true);
-                cells[i].setRolloverEnabled(true);
-            }
-        }
+            for (MinesweeperButton cell : cells) cell.reset();
+
         gameEnded = false;
         bombsMarked = 0;
         if (!changedPreset) 
