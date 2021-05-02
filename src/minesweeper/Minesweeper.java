@@ -12,12 +12,12 @@ import minesweeper.game.Dimensions;
 import minesweeper.game.MinesweeperGameManager;
 import minesweeper.game.cells.CellValue;
 import minesweeper.game.cells.MinesweeperButton;
+import minesweeper.menu.StatsMenu;
 import minesweeper.stats.GameStats;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
-import java.awt.Dialog;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ItemEvent;
@@ -39,7 +39,6 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 
@@ -275,61 +274,9 @@ public class Minesweeper extends JFrame {
         about.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));  //F1 Keybind for the "About" MessageDialog
         gameMenu.add(about);
         about.addActionListener(ae -> JOptionPane.showMessageDialog(Minesweeper.this, readAboutFile(), "About", JOptionPane.PLAIN_MESSAGE, ICON.getIcon()));    //Clicking on "About" loads information from a txt file
-        
-        //Stats Menu and Listener for MessageDialog
-        JMenu statsMenu = new JMenu("Stats");
-        menuBar.add(statsMenu);
-        // Listener for the Stats Menu that brings up the Stats Message Dialog
-        statsMenu.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) 
-            {
-                javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
-                JTextArea bTab = new JTextArea(GameStats.getInstance().getBeginnerStats().toString());
-                JTextArea iTab = new JTextArea(GameStats.getInstance().getIntermediateStats().toString());
-                JTextArea eTab = new JTextArea(GameStats.getInstance().getExpertStats().toString());
-                bTab.setEditable(false);
-                iTab.setEditable(false);
-                eTab.setEditable(false);
-                tabs.addTab("Beginner", bTab);
-                tabs.addTab("Intermediate", iTab);
-                tabs.addTab("Expert", eTab);
-                    
-                Object[] options = {"Ok", "Reset"};  //MessageDialog Buttons' Text
-                final JOptionPane optionPane = new JOptionPane(tabs, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, options);
-                final javax.swing.JDialog dialog = new javax.swing.JDialog();
-                dialog.setTitle("Stats");
-                dialog.setContentPane(optionPane);
-                // Listener for the MessageDialog's Buttons
-                optionPane.addPropertyChangeListener(e1 -> {
-                    if (JOptionPane.VALUE_PROPERTY.equals(e1.getPropertyName())) {
-                        // Wait until the user clicks on a button
-                        if (optionPane.getValue() == JOptionPane.UNINITIALIZED_VALUE) return;
 
-                        // Reset the currently showed tab (along with the stats associated with the difficulty the tab represents)
-                        if (optionPane.getValue().equals(options[1])) {
-                            if (bTab.isShowing()) {
-                                 GameStats.getInstance().resetStats(DifficultyPreset.BEGINNER);
-                                 bTab.setText(GameStats.getInstance().getStats(DifficultyPreset.BEGINNER).toString());
-                            } else if (iTab.isShowing()) {
-                                GameStats.getInstance().resetStats(DifficultyPreset.INTERMEDIATE);
-                                iTab.setText(GameStats.getInstance().getStats(DifficultyPreset.INTERMEDIATE).toString());
-                            } else {
-                                GameStats.getInstance().resetStats(DifficultyPreset.EXPERT);
-                                eTab.setText(GameStats.getInstance().getStats(DifficultyPreset.EXPERT).toString());
-                            }
-                            optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
-                        }
-                        else dialog.dispose();
-                    }
-                });
-                dialog.pack();
-                dialog.setIconImage(ICON.getImage());
-                dialog.setModalityType(Dialog.ModalityType.APPLICATION_MODAL);
-                dialog.setLocationRelativeTo(Minesweeper.this);
-                dialog.setVisible(true);    
-            }
-        });
+        StatsMenu statsMenu = new StatsMenu(this);
+        menuBar.add(statsMenu);
         
         setJMenuBar(menuBar);
     }
