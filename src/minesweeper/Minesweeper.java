@@ -8,12 +8,10 @@ import minesweeper.banner.TimeIndicator;
 import minesweeper.difficulty.Difficulty;
 import minesweeper.difficulty.DifficultyPreset;
 import minesweeper.game.MinesweeperGameManager;
-import minesweeper.game.cells.CellValue;
 import minesweeper.game.cells.MinesweeperButton;
 import minesweeper.menu.DifficultyMenu;
 import minesweeper.menu.MinesweeperMenuBar;
 import minesweeper.menu.StatsMenu;
-import minesweeper.stats.GameStats;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -23,24 +21,19 @@ import java.awt.GridLayout;
 import java.awt.event.ItemEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.Arrays;
-import java.util.Random;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 
-import static java.util.function.Predicate.not;
 import static minesweeper.utility.Icon.*;
 
 public class Minesweeper extends JFrame {
-    private static MinesweeperBanner banner;
-    private static MinesweeperMenuBar menuBar;
+    public static MinesweeperBanner banner;
+    public static MinesweeperMenuBar menuBar;
     private JPanel cellPanel;
-    private int[] bombLoc;
     private MinesweeperButton[] cells;
-
     private static final MinesweeperGameManager gameManager = MinesweeperGameManager.getInstance();
 
     public MinesweeperButton getCell(int position) {
@@ -109,137 +102,31 @@ public class Minesweeper extends JFrame {
                 if (e.getButton() == MouseEvent.BUTTON3
                         && gameManager.isGameRunning()
                         && !selected.isRevealed())
-                    toggleFlag(selected);
+                    gameManager.toggleFlag(selected);
 
                 // Start game if first reveal, check if bomb and end game or reveal otherwise
                 else if (e.getButton() == MouseEvent.BUTTON1
                         && (gameManager.isGameWaiting() || gameManager.isGameRunning())
                         && selected.inInitialState())
-                    checkAndReveal(selected);
+                    gameManager.checkAndReveal(selected);
 
                 // Reveal (if flagged neighbors equal to cell value) or highlight neighbors
                 else if (e.getButton() == MouseEvent.BUTTON2
                         && gameManager.isGameRunning()
                         && !selected.isFlagged() && selected.isRevealed())
-                    checkFlags(selected);
+                    gameManager.checkFlags(selected);
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
                 MinesweeperButton selected = ((MinesweeperButton)e.getSource());
                 if (e.getButton() == MouseEvent.BUTTON2 && selected.isHighlighted())
-                    highlightNeighbors(selected, false);
+                    gameManager.highlightNeighbors(selected, false);
             }
             });
             cellPanel.add(cells[i]);
             cellPanel.setBorder(BorderFactory.createMatteBorder(3, 3, 3, 3, Color.BLACK));  //ARGS => TOP, BOTTOM, LEFT, RIGHT
         }
-    }
-
-    private void checkAndReveal(MinesweeperButton selected) {
-        if (gameManager.isGameWaiting()) {
-            menuBar.setDifficultyMenuEnabled(false);
-            generateBombs(selected);
-            selected.reveal();
-            banner.getTimeIndicator().startTimer();
-            gameManager.setGameStatus(GameStatus.RUNNING);
-        } else if (selected.isBomb()) gameOver(selected);
-        else selected.reveal();
-    }
-
-    private void toggleFlag(MinesweeperButton selected) {
-        int bombsMarked = gameManager.getBombsFlagged();
-        BombIndicator bi = banner.getBombIndicator();
-        if (selected.isFlagged()) {
-            bi.increment();
-            selected.setIcon(null);
-            if (selected.isBomb()) gameManager.setBombsFlagged(--bombsMarked);
-        }
-        else if (!selected.isRevealed()) {
-            bi.decrement();
-            selected.setIcon(FLAG.getIcon());
-            if (selected.isBomb()) gameManager.setBombsFlagged(++bombsMarked);
-
-            // If the user has marked all the bombs (and no extra!) they win
-            if (gameManager.hasMarkedAll() && !bi.counterIsNegative()) {
-                bi.setForeground(new Color(0,153,0));
-                banner.getStatusIndicator().setIcon(WIN.getIcon());
-                GameStats.getInstance().updateStats(true, gameManager.getDifficulty().getType(), banner.getTimeIndicator().stopTimer());
-                menuBar.setDifficultyMenuEnabled(true);
-                gameManager.setGameStatus(GameStatus.WON);
-            }
-        }
-    }
-    
-    //Reveal all the bombs and stop the game if a bomb is revealed
-    private void gameOver(MinesweeperButton selected) {
-        selected.setIcon(BOMB_EXPLODED.getIcon());
-        for (int j : bombLoc) cells[j].reveal();
-        banner.getStatusIndicator().setIcon(LOSE.getIcon());
-        GameStats.getInstance().updateStats(false, gameManager.getDifficulty().getType(), banner.getTimeIndicator().stopTimer());
-        menuBar.setDifficultyMenuEnabled(true);
-        gameManager.setGameStatus(GameStatus.LOST);
-    }
-
-    private void checkFlags(MinesweeperButton selected) {
-        long neighborsFlagged = selected.getNeighbors()
-                .filter(MinesweeperButton::isFlagged)
-                .count();
-
-        if (neighborsFlagged < selected.getValue().asInt()) {
-            highlightNeighbors(selected, true);
-            return;
-        }
-
-        selected.getNeighbors()
-                .filter(MinesweeperButton::inInitialState)
-                .forEach(n -> {
-                    if (n.isBomb()) gameOver(n);
-                    else n.reveal();
-                });
-    }
-
-    private void highlightNeighbors(MinesweeperButton selected, boolean state) {
-        selected.setHighlighted(state);
-
-        selected.getNeighbors()
-                .filter(MinesweeperButton::inInitialState)
-                .forEach(n -> n.getModel().setRollover(state));
-    }
-
-    private void generateBombs(MinesweeperButton selected) {
-        bombLoc = new Random()
-                .ints(0, gameManager.getDifficulty().getDimensions().toArea())
-                .filter(loc -> isValidBombLocation(selected, loc))
-                .distinct()
-                .limit(gameManager.getDifficulty().getBombCount())
-                .toArray();
-
-        configureCells();
-    }
-
-    // Checks if the number generated is a valid location for a bomb
-    private boolean isValidBombLocation(MinesweeperButton selected, int r)  {
-        // First selection cannot be a bomb
-        if (selected.getPosition() == r)  return false;
-
-        // First selection neighbors must not be bombs to ensure a better start
-        for (int n : selected.getNeighborsPositions())
-            if (n == r) return false;
-
-        return true;
-    }
-
-    // Update each cell's value depending on how many adjacent bombs there are
-    private void configureCells() {
-        Arrays.stream(bombLoc)
-                .forEach( bl -> {
-                    MinesweeperButton currentCell = cells[bl];
-                    currentCell.setValue(CellValue.BOMB);
-                    currentCell.getNeighbors()
-                            .filter(not(MinesweeperButton::isBomb))
-                            .forEach(MinesweeperButton::incrementValue);
-                });
     }
 
     private void restart() {
