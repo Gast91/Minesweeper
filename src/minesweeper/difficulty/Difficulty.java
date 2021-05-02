@@ -15,4 +15,8 @@ public interface Difficulty {
     int getBombCount();
 
     DifficultyPreset getType();
+
+    default String bombCountToString() {
+        return Integer.toString(getBombCount());
+    }
 }
