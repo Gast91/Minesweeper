@@ -1,6 +1,7 @@
 package minesweeper;
 
 import minesweeper.banner.BombIndicator;
+import minesweeper.banner.MinesweeperBanner;
 import minesweeper.banner.StatusIndicator;
 import minesweeper.banner.StatusIndicatorClickedListener;
 import minesweeper.banner.TimeIndicator;
@@ -17,10 +18,7 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dialog;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.GridLayout;
-import java.awt.Insets;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -55,10 +53,8 @@ import static java.util.function.Predicate.not;
 import static minesweeper.utility.Icon.*;
 
 public class Minesweeper extends JFrame {
-    private JPanel cellPanel, banner;
-    private static StatusIndicator statusIndicator;
-    private static BombIndicator bombIndicator;
-    private static TimeIndicator timeIndicator;
+    private static MinesweeperBanner banner;
+    private JPanel cellPanel;
     private JMenu diffMenu;
     private int[] bombLoc;
     private MinesweeperButton[] cells;
@@ -92,10 +88,18 @@ public class Minesweeper extends JFrame {
         setIconImage((ICON.getImage()));
         
         readFile("Stats.mine");  //Load the stats file into memory/or create/recreate the stats file if it doesnt exist/is corrupted
-        createMenuBar();      
+        createMenuBar();
+
+        final Font gameFont = new Font("Verdana", Font.BOLD, 16);
+        banner = new MinesweeperBanner.BannerBuilder()
+                .withTimeIndicator(new TimeIndicator(gameFont))
+                .withStatusIndicator(new StatusIndicator(onStatusIndicatorClick()))
+                .withBombIndicator(new BombIndicator(gameFont, gameManager.getDifficulty()))
+                .build();
+        add(banner, BorderLayout.NORTH);
+
         createGrid();
-        createBanner();
-        
+
         add(banner, BorderLayout.NORTH);
         add(cellPanel);
         pack();
@@ -153,7 +157,7 @@ public class Minesweeper extends JFrame {
             diffMenu.setEnabled(false);
             generateBombs(selected);
             selected.reveal();
-            timeIndicator.startTimer();
+            banner.getTimeIndicator().startTimer();
             gameManager.setGameStatus(GameStatus.RUNNING);
         } else if (selected.isBomb()) gameOver(selected);
         else selected.reveal();
@@ -161,58 +165,29 @@ public class Minesweeper extends JFrame {
 
     private void toggleFlag(MinesweeperButton selected) {
         int bombsMarked = gameManager.getBombsFlagged();
+        BombIndicator bi = banner.getBombIndicator();
         if (selected.isFlagged()) {
-            bombIndicator.increment();
+            bi.increment();
             selected.setIcon(null);
             if (selected.isBomb()) gameManager.setBombsFlagged(--bombsMarked);
         }
         else if (!selected.isRevealed()) {
-            bombIndicator.decrement();
+            bi.decrement();
             selected.setIcon(FLAG.getIcon());
             if (selected.isBomb()) gameManager.setBombsFlagged(++bombsMarked);
 
             // If the user has marked all the bombs (and no extra!) they win
-            if (gameManager.hasMarkedAll() && !bombIndicator.counterIsNegative()) {
-                bombIndicator.setForeground(new Color(0,153,0));
-                statusIndicator.setIcon(WIN.getIcon());
+            if (gameManager.hasMarkedAll() && !bi.counterIsNegative()) {
+                bi.setForeground(new Color(0,153,0));
+                banner.getStatusIndicator().setIcon(WIN.getIcon());
                 if (gameManager.getDifficulty() != DifficultyPreset.CUSTOM) {
-                    updateStats(true, gameManager.getDifficulty().getType(), timeIndicator.stopTimer());
+                    updateStats(true, gameManager.getDifficulty().getType(), banner.getTimeIndicator().stopTimer());
                     updateStats();
                 }
                 gameManager.setGameStatus(GameStatus.WON);
                 diffMenu.setEnabled(true);
             }
         }
-    }
-
-    // Creates the banner on the top that stores the timeIndicator, statusIndicator and bombIndicator and handles the way the components are displayed
-    private void createBanner()
-    {
-        banner = new JPanel(new GridBagLayout());
-        GridBagConstraints c = new GridBagConstraints();
-        final Font font = new Font("Verdana", Font.BOLD, 16);
-        
-        statusIndicator = new StatusIndicator(onStatusIndicatorClick());
-      
-        timeIndicator = new TimeIndicator(font);
-        javax.swing.ToolTipManager.sharedInstance().setInitialDelay(250);   //Decrease the initial delay for showing the tooltip and increase the dismiss delay (from 750 to 250 and 4000 to 6000ms respectively)
-        javax.swing.ToolTipManager.sharedInstance().setDismissDelay(6000);
-        
-        bombIndicator = new BombIndicator(font, gameManager.getDifficulty());
-        
-        c.insets = new Insets(10,0,10,0); //1 high external top and bottom padding for all the components
-        c.ipady = 20;                    //2 high extra internal padding for this component
-        c.anchor = GridBagConstraints.LINE_START;
-        banner.add(timeIndicator, c);
-        
-        c.weightx = 1;     //allocate more space for the status button
-        c.anchor = GridBagConstraints.CENTER;
-        banner.add(statusIndicator,c);
-        
-        c.weightx = 0;  //reset
-        c.anchor = GridBagConstraints.LINE_END;
-        banner.add(bombIndicator, c);
-        banner.setBorder(BorderFactory.createMatteBorder(3, 3, 0, 3, Color.BLACK));
     }
     
     //Creates the MenuBar and all of its subcomponents and adds their functionality
@@ -501,22 +476,19 @@ public class Minesweeper extends JFrame {
     }
     
     //Reveal all the bombs and stop the game if a bomb is revealed
-    private void gameOver(MinesweeperButton selected)
-    {
+    private void gameOver(MinesweeperButton selected) {
         selected.setIcon(BOMB_EXPLODED.getIcon());
         for (int j : bombLoc) cells[j].reveal();
-        statusIndicator.setIcon(LOSE.getIcon());
-        if (gameManager.getDifficulty() != DifficultyPreset.CUSTOM)
-        {
-            updateStats(false, gameManager.getDifficulty().getType(), timeIndicator.stopTimer());
+        banner.getStatusIndicator().setIcon(LOSE.getIcon());
+        if (gameManager.getDifficulty() != DifficultyPreset.CUSTOM) {
+            updateStats(false, gameManager.getDifficulty().getType(), banner.getTimeIndicator().stopTimer());
             updateStats();
         }
         gameManager.setGameStatus(GameStatus.LOST);
         diffMenu.setEnabled(true);
     }
 
-    private void checkFlags(MinesweeperButton selected)
-    {
+    private void checkFlags(MinesweeperButton selected) {
         long neighborsFlagged = selected.getNeighbors()
                 .filter(MinesweeperButton::isFlagged)
                 .count();
@@ -576,13 +548,9 @@ public class Minesweeper extends JFrame {
                             .forEach(MinesweeperButton::incrementValue);
                 });
     }
-    
-    //Reset all the game variables, cells and flags; place new random bombs and await player input to reconfigure the cells
-    private void restart()
-    {
-        //If the user requested a change in difficulty, get rid of the current panel and each components and recreate the grid with the correct values
-        if (gameManager.hasPresetChanged())
-        {
+
+    private void restart() {
+        if (gameManager.hasPresetChanged()) {
             Container c = cellPanel.getParent();
             c.remove(cellPanel);
 
@@ -595,14 +563,11 @@ public class Minesweeper extends JFrame {
             
             //Recenter the window
             setLocationRelativeTo(null);
-        }
-        else  //If the difficulty is still the same, just reset the values of every cell's properties
+        } else  // If the difficulty is still the same, just reset the values of every cell's properties
             for (MinesweeperButton cell : cells) cell.reset();
 
         gameManager.reset();
-        timeIndicator.reset();
-        bombIndicator.reset(gameManager.getDifficulty().getBombCount());
-        statusIndicator.reset();
+        banner.reset(gameManager.getDifficulty().getBombCount());
         diffMenu.setEnabled(true);
         gameManager.setPresetChanged(false);
     }
