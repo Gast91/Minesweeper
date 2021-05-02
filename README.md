@@ -1,5 +1,5 @@
 # Minesweeper Clone
-A Minesweeper clone (game popularized by the Windows OS) developed in **spring 2017** for the sole purpose of getting familiar with Java and more specifically Swing.
+A Minesweeper clone (game popularized by the Windows OS) developed initially in **spring 2017** for the sole purpose of getting familiar with Java and more specifically Swing. In **spring 2021** it was modernized and refactored.
 <br><p align="center">
   <img src="preview.png">
 </p>
