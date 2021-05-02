@@ -5,13 +5,12 @@ import minesweeper.banner.MinesweeperBanner;
 import minesweeper.banner.StatusIndicator;
 import minesweeper.banner.StatusIndicatorClickedListener;
 import minesweeper.banner.TimeIndicator;
-import minesweeper.difficulty.CustomDifficulty;
 import minesweeper.difficulty.Difficulty;
 import minesweeper.difficulty.DifficultyPreset;
-import minesweeper.game.Dimensions;
 import minesweeper.game.MinesweeperGameManager;
 import minesweeper.game.cells.CellValue;
 import minesweeper.game.cells.MinesweeperButton;
+import minesweeper.menu.DifficultyMenu;
 import minesweeper.menu.StatsMenu;
 import minesweeper.stats.GameStats;
 
@@ -29,17 +28,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.function.Consumer;
 import javax.swing.BorderFactory;
-import javax.swing.ButtonGroup;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JRadioButtonMenuItem;
-import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 
 import static java.util.function.Predicate.not;
@@ -48,7 +44,7 @@ import static minesweeper.utility.Icon.*;
 public class Minesweeper extends JFrame {
     private static MinesweeperBanner banner;
     private JPanel cellPanel;
-    private JMenu diffMenu;
+    private DifficultyMenu diffMenu;
     private int[] bombLoc;
     private MinesweeperButton[] cells;
 
@@ -186,90 +182,10 @@ public class Minesweeper extends JFrame {
         JMenu gameMenu = new JMenu("Game");
         menuBar.add(gameMenu);
         
-        diffMenu = new JMenu("Difficulty");     //Difficulty Sub Menu
+        diffMenu = new DifficultyMenu(this, gameManager.getDifficulty().getType(), onGameDifficultyPresetChange(), this::restart);
         gameMenu.add(diffMenu);
-        gameMenu.addSeparator();
         
-        //Difficulty Sub Menu Radio Buttons - Create them, group them all together to prevent multiple radio buttons being selected at the same time and add a listener to each of them
-        diffMenu.add(new JRadioButtonMenuItem("Beginner"));
-        diffMenu.add(new JRadioButtonMenuItem("Intermediate"));
-        diffMenu.add(new JRadioButtonMenuItem("Expert"));
-        diffMenu.getItem(gameManager.getDifficulty().toInt()).setSelected(true);
-        ButtonGroup rbGroup = new ButtonGroup();  
-        for (int i = 0; i < 3; i++)
-        {
-            rbGroup.add(diffMenu.getItem(i));
-            diffMenu.getItem(i).addItemListener(e -> {
-                //When a radio button is selected, set the difficulty according to the component order, mark that the preset changed and restart the game with the correct values
-                gameManager.setPresetChanged(true);
-                if (e.getStateChange() == ItemEvent.SELECTED)
-                    gameManager.setDifficulty(DifficultyPreset.fromInt(((JMenuItem)e.getSource()).getParent().getComponentZOrder(((JMenuItem)e.getSource()))));
-                restart();
-            }); //Radio Button Listener
-            diffMenu.getItem(i).setAccelerator(KeyStroke.getKeyStroke(i + 49, KeyEvent.SHIFT_DOWN_MASK));  //SHIFT + 1 TO 3 Difficulty Keybinds
-        }
-        diffMenu.addSeparator();
-        JMenuItem custom = new JMenuItem("Custom..");
-        diffMenu.add(custom); 
-        custom.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_4, KeyEvent.SHIFT_DOWN_MASK));  //SHIFT + 4 Custom Difficulty Keybind
-        custom.addActionListener(ae -> {
-            JTextField r = new JTextField();
-            JTextField c = new JTextField();
-            JTextField b = new JTextField();
-            JLabel inputInfo = new JLabel();    //INVALID INPUT LABEL
-            inputInfo.setForeground(Color.RED);
-
-            JPanel inputPanel = new JPanel();
-            inputPanel.setLayout(new GridLayout(4, 2));
-            inputPanel.add(new JLabel("Rows:"));
-            inputPanel.add(r);
-            r.setToolTipText("Value must be between 5 and 25");
-            inputPanel.add(new JLabel("Columns:"));
-            inputPanel.add(c);
-            c.setToolTipText("Value must be between 5 and 45");
-            inputPanel.add(new JLabel("Mines:"));
-            inputPanel.add(b);
-            b.setToolTipText("Value must be less than (Rows X Cols) - 9");
-            inputPanel.add(inputInfo);
-
-            Object[] options = {"Submit", "Cancel"};  //MessageDialog Buttons' Text
-            final JOptionPane optionPane = new JOptionPane(inputPanel, JOptionPane.PLAIN_MESSAGE, JOptionPane.OK_CANCEL_OPTION, null, options);
-            final javax.swing.JDialog dialog = new javax.swing.JDialog();
-            dialog.setTitle("Customize Difficulty");
-            dialog.setContentPane(optionPane);
-
-            optionPane.addPropertyChangeListener(e -> {
-                if (JOptionPane.VALUE_PROPERTY.equals(e.getPropertyName()))
-                {
-                    if (optionPane.getValue() == JOptionPane.UNINITIALIZED_VALUE)  //Wait until the user clicks on a button
-                        return;
-
-                    if (optionPane.getValue().equals(options[0]))   //if the user clicked on submit
-                    {
-                        if (inputIsValid(r.getText(), c.getText(), b.getText(), inputInfo))  //and if the input is valid update the game's variables according to the input and restart the game
-                        {
-                            MinesweeperGameManager.getInstance().setDifficulty(new CustomDifficulty(
-                                    new Dimensions(Integer.parseInt(r.getText()), Integer.parseInt(c.getText())),
-                                    Integer.parseInt(b.getText())));
-                            rbGroup.clearSelection();
-                            gameManager.setPresetChanged(true);
-                            dialog.dispose();
-                            restart();
-                        }
-                        else  //if the input is not valid, display an error message and reset the value of the optionPane
-                            optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE); //If the user presses the same button next time, without this being reseted, no property change event will be fired
-                    }
-                    else
-                        dialog.dispose();
-                }
-            });  //Listener for the MessageDialog's Buttons
-            dialog.pack();
-            dialog.setIconImage(ICON.getImage());
-            dialog.setVisible(true);
-            dialog.setLocationRelativeTo(Minesweeper.this);
-        });     //Listener for the Custom Menu Item that brings up a MessageDialog where the user can input his custom difficulty
-        
-        //About Menu and Listener for MessageDialog
+        // About Menu and Listener for MessageDialog
         JMenuItem about = new JMenuItem("About");
         about.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));  //F1 Keybind for the "About" MessageDialog
         gameMenu.add(about);
@@ -279,38 +195,6 @@ public class Minesweeper extends JFrame {
         menuBar.add(statsMenu);
         
         setJMenuBar(menuBar);
-    }
-    
-    //Checks if the user's custom difficulty inputs are appropriate and displays an error message if needed
-    private boolean inputIsValid(String r, String c, String b, JLabel i)
-    {
-        if (r.equals("") || c.equals("") || b.equals(""))
-        {
-            i.setText("Empty Fields..");
-            return false;
-        }
-        else
-        {
-            int rs, cs, bs;
-            try
-            {
-                rs = Integer.parseInt(r);
-                cs = Integer.parseInt(c);
-                bs = Integer.parseInt(b);
-            }
-            catch(NumberFormatException e)
-            {
-                i.setText("Invalid Input..");
-                return false;
-            }
-            if (bs < ((rs * cs) - 9) && rs >= 5 && cs >= 5 && rs <= 25 && cs <= 45) //GRID SIZE BETWEEN 5x5 AND 25x45 AND TOTAL BOMBS MUST BE LESS THAT GRID_SIZE - 9 TO ENSURE THAT THE USER'S FIRST CLICK IS "SAFE"
-                return true;
-            else
-            {
-                i.setText("Grid Size/Mines..");
-                return false;
-            }
-        }
     }
 
     private static String readAboutFile() {
@@ -415,6 +299,14 @@ public class Minesweeper extends JFrame {
         banner.reset(gameManager.getDifficulty().getBombCount());
         diffMenu.setEnabled(true);
         gameManager.setPresetChanged(false);
+    }
+
+    private Consumer<ItemEvent> onGameDifficultyPresetChange() {
+        return e -> {
+            if (e.getStateChange() == ItemEvent.SELECTED)
+                gameManager.setDifficulty(DifficultyPreset.fromInt(((JMenuItem)e.getSource()).getParent().getComponentZOrder(((JMenuItem)e.getSource()))));
+            restart();
+        };
     }
 
     private StatusIndicatorClickedListener onStatusIndicatorClick() {
