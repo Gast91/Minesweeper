@@ -11,6 +11,7 @@ import minesweeper.game.MinesweeperGameManager;
 import minesweeper.game.cells.CellValue;
 import minesweeper.game.cells.MinesweeperButton;
 import minesweeper.menu.DifficultyMenu;
+import minesweeper.menu.MinesweeperMenuBar;
 import minesweeper.menu.StatsMenu;
 import minesweeper.stats.GameStats;
 
@@ -20,35 +21,26 @@ import java.awt.Container;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ItemEvent;
-import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.KeyStroke;
 
 import static java.util.function.Predicate.not;
 import static minesweeper.utility.Icon.*;
 
 public class Minesweeper extends JFrame {
     private static MinesweeperBanner banner;
+    private static MinesweeperMenuBar menuBar;
     private JPanel cellPanel;
-    private DifficultyMenu diffMenu;
     private int[] bombLoc;
     private MinesweeperButton[] cells;
 
-    private static final Path ABOUT_PATH = Path.of("src/resources/About.mine");
     private static final MinesweeperGameManager gameManager = MinesweeperGameManager.getInstance();
 
     public MinesweeperButton getCell(int position) {
@@ -76,7 +68,11 @@ public class Minesweeper extends JFrame {
         setTitle("Minesweeper");
         setIconImage((ICON.getImage()));
 
-        createMenuBar();
+        menuBar = new MinesweeperMenuBar.MenuBarBuilder()
+                .withDifficultyMenu(new DifficultyMenu(this, DifficultyPreset.EXPERT, onGameDifficultyPresetChange(), this::restart))
+                .withStatsMenu(new StatsMenu(this))
+                .build(this);
+        setJMenuBar(menuBar);
 
         final Font gameFont = new Font("Verdana", Font.BOLD, 16);
         banner = new MinesweeperBanner.BannerBuilder()
@@ -142,7 +138,7 @@ public class Minesweeper extends JFrame {
 
     private void checkAndReveal(MinesweeperButton selected) {
         if (gameManager.isGameWaiting()) {
-            diffMenu.setEnabled(false);
+            menuBar.setDifficultyMenuEnabled(false);
             generateBombs(selected);
             selected.reveal();
             banner.getTimeIndicator().startTimer();
@@ -169,39 +165,9 @@ public class Minesweeper extends JFrame {
                 bi.setForeground(new Color(0,153,0));
                 banner.getStatusIndicator().setIcon(WIN.getIcon());
                 GameStats.getInstance().updateStats(true, gameManager.getDifficulty().getType(), banner.getTimeIndicator().stopTimer());
+                menuBar.setDifficultyMenuEnabled(true);
                 gameManager.setGameStatus(GameStatus.WON);
-                diffMenu.setEnabled(true);
             }
-        }
-    }
-    
-    //Creates the MenuBar and all of its subcomponents and adds their functionality
-    private void createMenuBar()
-    {
-        JMenuBar menuBar = new JMenuBar();
-        JMenu gameMenu = new JMenu("Game");
-        menuBar.add(gameMenu);
-        
-        diffMenu = new DifficultyMenu(this, gameManager.getDifficulty().getType(), onGameDifficultyPresetChange(), this::restart);
-        gameMenu.add(diffMenu);
-        
-        // About Menu and Listener for MessageDialog
-        JMenuItem about = new JMenuItem("About");
-        about.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));  //F1 Keybind for the "About" MessageDialog
-        gameMenu.add(about);
-        about.addActionListener(ae -> JOptionPane.showMessageDialog(Minesweeper.this, readAboutFile(), "About", JOptionPane.PLAIN_MESSAGE, ICON.getIcon()));    //Clicking on "About" loads information from a txt file
-
-        StatsMenu statsMenu = new StatsMenu(this);
-        menuBar.add(statsMenu);
-        
-        setJMenuBar(menuBar);
-    }
-
-    private static String readAboutFile() {
-        try {
-            return Files.readString(ABOUT_PATH);
-        } catch (IOException ignored) {
-            return "File not found";
         }
     }
     
@@ -210,11 +176,9 @@ public class Minesweeper extends JFrame {
         selected.setIcon(BOMB_EXPLODED.getIcon());
         for (int j : bombLoc) cells[j].reveal();
         banner.getStatusIndicator().setIcon(LOSE.getIcon());
-
         GameStats.getInstance().updateStats(false, gameManager.getDifficulty().getType(), banner.getTimeIndicator().stopTimer());
-
+        menuBar.setDifficultyMenuEnabled(true);
         gameManager.setGameStatus(GameStatus.LOST);
-        diffMenu.setEnabled(true);
     }
 
     private void checkFlags(MinesweeperButton selected) {
@@ -295,9 +259,8 @@ public class Minesweeper extends JFrame {
         } else  // If the difficulty is still the same, just reset the values of every cell's properties
             for (MinesweeperButton cell : cells) cell.reset();
 
-        gameManager.reset();
         banner.reset(gameManager.getDifficulty().getBombCount());
-        diffMenu.setEnabled(true);
+        gameManager.reset();
         gameManager.setPresetChanged(false);
     }
 
