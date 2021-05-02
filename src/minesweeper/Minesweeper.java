@@ -33,6 +33,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -50,6 +51,7 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
 
+import static java.util.function.Predicate.not;
 import static minesweeper.utility.Icon.*;
 
 public class Minesweeper extends JFrame {
@@ -156,8 +158,7 @@ public class Minesweeper extends JFrame {
                     //So generate the bombs and configure the cells. Then reveal the cell clicked and any additional ones as needed
                     if (bombs != 0) {
                         diffMenu.setEnabled(false);
-                        placeBombs(e);
-                        configCells();
+                        generateBombs(selected);
                         selected.reveal();
                         timeIndicator.setText(Integer.toString(seconds++));
                         timer.start();
@@ -572,64 +573,48 @@ public class Minesweeper extends JFrame {
                 });
     }
 
-    private void highlightNeighbors(MinesweeperButton selected, boolean state)
-    {
+    private void highlightNeighbors(MinesweeperButton selected, boolean state) {
         selected.setHighlighted(state);
-        for (int n : selected.getNeighborsPositions())
-        {
-            if (n != -1)
-            {
-                if (!cells[n].isFlagged() && !cells[n].isRevealed())
-                    cells[n].getModel().setRollover(state);
-            }
-        }
+
+        selected.getNeighbors()
+                .filter(MinesweeperButton::inInitialState)
+                .forEach(n -> n.getModel().setRollover(state));
     }
 
-    //Assigns X random cells with bombs on the first user click (where X = amount of bombs specified by the user)
-    private void placeBombs(MouseEvent e)
-    {
-        bombLoc = new int[bombs];
-        while (bombs > 0)
-        {
-            //Random cell location between 0 and total number of cells
-            int r = (int) Math.floor(Math.random() * gameManager.getDifficulty().getDimensions().toArea());
-            
-            //Making sure that the first cell the user clicks on is an empty cell and that its immediate neighboring cells arent bombs
-            //If the above condition is satisfied and if the cell does not already contain a bomb, assign one to it
-            if (isValid(e, r) && !cells[r].isBomb())
-            {
-                    cells[r].setValue(CellValue.BOMB);
-                    bombLoc[bombs-1] = r;
-                    bombs--;
-            }
-        }
+    private void generateBombs(MinesweeperButton selected) {
+        bombLoc = new Random()
+                .ints(0, gameManager.getDifficulty().getDimensions().toArea())
+                .filter(loc -> isValidBombLocation(selected, loc))
+                .distinct()
+                .limit(gameManager.getDifficulty().getBombCount())
+                .toArray();
+
+        configureCells();
+        bombs = 0;  // Ugh
     }
-    
-    //Checks if the number generated is a valid location for a bomb
-    private boolean isValid(MouseEvent e, int r)
-    {
-        //If the number generated is the location of the cell clicked by the user, return false
-        if (((MinesweeperButton)e.getSource()).getPosition() == r)
-            return false;
-        //Check each neighbor of the cell first clicked by the user; if the number generated isnt one of them return true else return false
-        for (int n : ((MinesweeperButton)e.getSource()).getNeighborsPositions())
-        {
-            if (n == r)
-                return false;
-        }
+
+    // Checks if the number generated is a valid location for a bomb
+    private boolean isValidBombLocation(MinesweeperButton selected, int r)  {
+        // First selection cannot be a bomb
+        if (selected.getPosition() == r)  return false;
+
+        // First selection neighbors must not be bombs to ensure a better start
+        for (int n : selected.getNeighborsPositions())
+            if (n == r) return false;
+
         return true;
     }
 
     // Update each cell's value depending on how many adjacent bombs there are
-    private void configCells()
-    {
-        for (int k : bombLoc) {
-            for (int j = 0; j < 8; j++) {
-                int[] neighborsPositions = cells[k].getNeighborsPositions();
-                if (neighborsPositions[j] != -1 && !cells[neighborsPositions[j]].isBomb())
-                    cells[neighborsPositions[j]].incrementValue();
-            }
-        }
+    private void configureCells() {
+        Arrays.stream(bombLoc)
+                .forEach( bl -> {
+                    MinesweeperButton currentCell = cells[bl];
+                    currentCell.setValue(CellValue.BOMB);
+                    currentCell.getNeighbors()
+                            .filter(not(MinesweeperButton::isBomb))
+                            .forEach(MinesweeperButton::incrementValue);
+                });
     }
     
     //Reset all the game variables, cells and flags; place new random bombs and await player input to reconfigure the cells
