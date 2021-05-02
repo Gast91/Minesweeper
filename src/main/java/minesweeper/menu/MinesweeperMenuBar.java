@@ -18,7 +18,7 @@ public class MinesweeperMenuBar extends JMenuBar {
     private DifficultyMenu difficultyMenu;
     private StatsMenu statsMenu;
 
-    private static final Path ABOUT_PATH = Path.of("src/resources/About.mine");
+    private static final Path ABOUT_PATH = Path.of("src/main/resources/About.mine");
 
     private MinesweeperMenuBar() {
         super();
