@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package minesweeper;
 
 import java.awt.BorderLayout;
@@ -18,14 +12,13 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,10 +26,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -50,28 +45,20 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
 
-/**
- *
- * @author James
- */
-
-public class Minesweeper extends javax.swing.JFrame
+public class Minesweeper extends JFrame
 {
-    /**
-     * @param args the command line arguments
-     */
     private JPanel cellPanel, banner;
     private JButton statusIndicator;
     private JLabel timeIndicator, bombIndicator;
     private JMenu diffMenu;
     private Color col;
-    ImageIcon flag = new ImageIcon(getClass().getClassLoader().getResource("flag.png"));
+    ImageIcon flag = new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/flag.png")));
     private int rows, cols, bombs, bombsMarked = 0, seconds = 0, difficulty = 2;    //SIZE OF GRID (ROWS * COLS) - AMOUNT OF BOMBS IN GAME - BOMBS MARKED BY THE USER - SECONDS ELAPSED - DIFFICULTY PRESET(SEE SETDIFFICULTY FUNCTION)
-    private int bombLoc[];                                                         //ARRAY FOR THE LOCATION OF EACH BOMB
-    private MinesweeperButton cells[];                                            //ARRAY THAT STORES ALL THE CELLS
+    private int[] bombLoc;                                                         //ARRAY FOR THE LOCATION OF EACH BOMB
+    private MinesweeperButton[] cells;                                            //ARRAY THAT STORES ALL THE CELLS
     private boolean running = false, gameEnded = false, changedPreset = false;
-    private final int stats[] = new int[] {0, 0, 0 ,0 ,0 ,0 , 0, 0, 0, 0, 0, 0};//ARRAY THAT STORES IN MEMORY THE USER'S STATS TAKEN FROM A FILE (ORDER: BEG/INTER/EXP - GAMES PLAYED, WON, %, BEST TIME)
-    ArrayList emptyCells = new ArrayList();  
+    private final int[] stats = new int[] {0, 0, 0 ,0 ,0 ,0 , 0, 0, 0, 0, 0, 0};//ARRAY THAT STORES IN MEMORY THE USER'S STATS TAKEN FROM A FILE (ORDER: BEG/INTER/EXP - GAMES PLAYED, WON, %, BEST TIME)
+    ArrayList<MinesweeperButton> emptyCells = new ArrayList<>();
     Timer timer = new Timer(1000, new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent ae) 
@@ -90,7 +77,7 @@ public class Minesweeper extends javax.swing.JFrame
     {
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Minesweeper");
-        setIconImage((new ImageIcon(getClass().getClassLoader().getResource("icon.png"))).getImage());
+        setIconImage((new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/icon.png")))).getImage());
         
         readFile("Stats.mine");  //Load the stats file into memory/or create/recreate the stats file if it doesnt exist/is corrupted
         createMenuBar();      
@@ -143,7 +130,7 @@ public class Minesweeper extends javax.swing.JFrame
                         if (bombsMarked == bombLoc.length && Integer.parseInt(bombIndicator.getText()) == 0)
                         {
                             bombIndicator.setForeground(new Color(0,153,0));
-                            statusIndicator.setIcon(new ImageIcon(getClass().getClassLoader().getResource("win.png")));
+                            statusIndicator.setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/win.png"))));
                             if (difficulty != 3)
                             {
                                 updateStats(true);
@@ -172,7 +159,7 @@ public class Minesweeper extends javax.swing.JFrame
                     //If button clicked is a bomb, reveal all the bombs and stop the game
                     if (((MinesweeperButton)e.getSource()).bomb)
                     {
-                        ((MinesweeperButton)e.getSource()).setIcon(new ImageIcon(getClass().getClassLoader().getResource("bomb2.png")));   //RED BOMB ICON
+                        ((MinesweeperButton)e.getSource()).setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/bomb2.png"))));   //RED BOMB ICON
                         gameOver();
                     }
                     else
@@ -208,7 +195,7 @@ public class Minesweeper extends javax.swing.JFrame
         GridBagConstraints c = new GridBagConstraints();
         Font font = new Font("Verdana", Font.BOLD, 16);
         
-        statusIndicator = new JButton(new ImageIcon(getClass().getClassLoader().getResource("smiley.png")));
+        statusIndicator = new JButton(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/smiley.png"))));
         statusIndicator.setPreferredSize(new java.awt.Dimension(60, 37));
         statusIndicator.setBorder(BorderFactory.createMatteBorder(3, 3, 3, 3, Color.BLACK));
         //If statusIndicator is pressed, restart the game
@@ -283,16 +270,12 @@ public class Minesweeper extends javax.swing.JFrame
         for (int i = 0; i < 3; i++)
         {
             rbGroup.add(diffMenu.getItem(i));
-            diffMenu.getItem(i).addItemListener(new ItemListener() {
-                @Override
-                public void itemStateChanged(ItemEvent e)
-                {
-                    //When a radio button is selected, set the difficulty according to the component order, mark that the preset changed and restart the game with the correct values
-                    changedPreset = true;
-                    if (e.getStateChange() == ItemEvent.SELECTED)
-                        difficulty = ((JMenuItem)e.getSource()).getParent().getComponentZOrder(((JMenuItem)e.getSource()));
-                    restart();
-                }
+            diffMenu.getItem(i).addItemListener(e -> {
+                //When a radio button is selected, set the difficulty according to the component order, mark that the preset changed and restart the game with the correct values
+                changedPreset = true;
+                if (e.getStateChange() == ItemEvent.SELECTED)
+                    difficulty = ((JMenuItem)e.getSource()).getParent().getComponentZOrder(((JMenuItem)e.getSource()));
+                restart();
             }); //Radio Button Listener
             diffMenu.getItem(i).setAccelerator(KeyStroke.getKeyStroke(i + 49, KeyEvent.SHIFT_DOWN_MASK));  //SHIFT + 1 TO 3 Difficulty Keybinds
         }
@@ -324,43 +307,39 @@ public class Minesweeper extends javax.swing.JFrame
                 inputPanel.add(inputInfo);
                 
                 Object[] options = {"Submit", "Cancel"};  //MessageDialog Buttons' Text
-                final JOptionPane optionPane = new JOptionPane(inputPanel, JOptionPane.PLAIN_MESSAGE, 0, null, options);
+                final JOptionPane optionPane = new JOptionPane(inputPanel, JOptionPane.PLAIN_MESSAGE, JOptionPane.OK_CANCEL_OPTION, null, options);
                 final javax.swing.JDialog dialog = new javax.swing.JDialog();
                 dialog.setTitle("Customize Difficulty");
                 dialog.setContentPane(optionPane);
                 
-                optionPane.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
-                    @Override
-                    public void propertyChange(java.beans.PropertyChangeEvent e) 
+                optionPane.addPropertyChangeListener(e -> {
+                    if (JOptionPane.VALUE_PROPERTY.equals(e.getPropertyName()))
                     {
-                        if (JOptionPane.VALUE_PROPERTY.equals(e.getPropertyName()))
-                        {
-                            if (optionPane.getValue() == JOptionPane.UNINITIALIZED_VALUE)  //Wait until the user clicks on a button
-                                return;
+                        if (optionPane.getValue() == JOptionPane.UNINITIALIZED_VALUE)  //Wait until the user clicks on a button
+                            return;
 
-                            if (optionPane.getValue().equals(options[0]))   //if the user clicked on submit
+                        if (optionPane.getValue().equals(options[0]))   //if the user clicked on submit
+                        {
+                            if (inputIsValid(r.getText(), c.getText(), b.getText(), inputInfo))  //and if the input is valid update the game's variables according to the input and restart the game
                             {
-                                if (inputIsValid(r.getText(), c.getText(), b.getText(), inputInfo))  //and if the input is valid update the game's variables according to the input and restart the game
-                                {
-                                    rows = Integer.parseInt(r.getText());
-                                    cols = Integer.parseInt(c.getText());
-                                    bombs = Integer.parseInt(b.getText());
-                                    difficulty = 3;  //CUSTOM SETTING ACCORDING TO THE ABOVE INPUTS
-                                    rbGroup.clearSelection();
-                                    changedPreset = true;
-                                    dialog.dispose();
-                                    restart();
-                                }
-                                else  //if the input is not valid, display an error message and reset the value of the optionPane
-                                    optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE); //If the user presses the same button next time, without this being reseted, no property change event will be fired
-                            }
-                            else
+                                rows = Integer.parseInt(r.getText());
+                                cols = Integer.parseInt(c.getText());
+                                bombs = Integer.parseInt(b.getText());
+                                difficulty = 3;  //CUSTOM SETTING ACCORDING TO THE ABOVE INPUTS
+                                rbGroup.clearSelection();
+                                changedPreset = true;
                                 dialog.dispose();
+                                restart();
+                            }
+                            else  //if the input is not valid, display an error message and reset the value of the optionPane
+                                optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE); //If the user presses the same button next time, without this being reseted, no property change event will be fired
                         }
+                        else
+                            dialog.dispose();
                     }
                 });  //Listener for the MessageDialog's Buttons
                 dialog.pack();
-                dialog.setIconImage((new ImageIcon(getClass().getClassLoader().getResource("icon.png"))).getImage());
+                dialog.setIconImage((new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/icon.png")))).getImage());
                 dialog.setVisible(true);
                 dialog.setLocationRelativeTo(Minesweeper.this);
             }
@@ -374,7 +353,7 @@ public class Minesweeper extends javax.swing.JFrame
             @Override
             public void actionPerformed(java.awt.event.ActionEvent ae) 
             {
-                JOptionPane.showMessageDialog(Minesweeper.this, readFile("/About.mine"), "About", JOptionPane.PLAIN_MESSAGE, new ImageIcon(getClass().getClassLoader().getResource("icon.png")));
+                JOptionPane.showMessageDialog(Minesweeper.this, readFile("/About.mine"), "About", JOptionPane.PLAIN_MESSAGE, new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/icon.png"))));
             }
         });    //Clicking on "About" loads information from a txt file
         
@@ -397,45 +376,41 @@ public class Minesweeper extends javax.swing.JFrame
                 tabs.addTab("Expert", eTab);
                     
                 Object[] options = {"Ok", "Reset"};  //MessageDialog Buttons' Text
-                final JOptionPane optionPane = new JOptionPane(tabs, JOptionPane.PLAIN_MESSAGE, 0, null, options);
+                final JOptionPane optionPane = new JOptionPane(tabs, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, options);
                 final javax.swing.JDialog dialog = new javax.swing.JDialog();
                 dialog.setTitle("Stats");
                 dialog.setContentPane(optionPane);
-                optionPane.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
-                    @Override
-                    public void propertyChange(java.beans.PropertyChangeEvent e) 
+                optionPane.addPropertyChangeListener(e1 -> {
+                    if (JOptionPane.VALUE_PROPERTY.equals(e1.getPropertyName()))
                     {
-                        if (JOptionPane.VALUE_PROPERTY.equals(e.getPropertyName()))
-                        {
-                            if (optionPane.getValue() == JOptionPane.UNINITIALIZED_VALUE)  //Wait until the user clicks on a button
-                                return;
+                        if (optionPane.getValue() == JOptionPane.UNINITIALIZED_VALUE)  //Wait until the user clicks on a button
+                            return;
 
-                            if (optionPane.getValue().equals(options[1]))   //If the user clicked on reset, reset the tab showing and update the Stats File with the correct info
+                        if (optionPane.getValue().equals(options[1]))   //If the user clicked on reset, reset the tab showing and update the Stats File with the correct info
+                        {
+                            if (bTab.isShowing())
                             {
-                                if (bTab.isShowing())
-                                {
-                                    resetStats(0, 3);
-                                    bTab.setText("Games Played: " + stats[0] +"\nGames Won: " + stats[1] + "\nWin Percentage: " + stats[2] + "%\nBest Time: " + String.format("%02d", (stats[3]) / 60) + ":" + String.format("%02d", (stats[3]) % 60));
-                                }
-                                else if (iTab.isShowing())
-                                {
-                                    resetStats(4, 7);
-                                    iTab.setText("Games Played: " + stats[4] +"\nGames Won: " + stats[5] + "\nWin Percentage: " + stats[6] + "%\nBest Time: " + String.format("%02d", (stats[7]) / 60) + ":" + String.format("%02d", (stats[7]) % 60));
-                                }
-                                else
-                                {
-                                    resetStats(8, 11);
-                                    eTab.setText("Games Played: " + stats[8] +"\nGames Won: " + stats[9] + "\nWin Percentage: " + stats[10] + "%\nBest Time: " + String.format("%02d", (stats[11]) / 60) + ":" + String.format("%02d", (stats[11]) % 60));
-                                }
-                                optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);  
+                                resetStats(0, 3);
+                                bTab.setText("Games Played: " + stats[0] +"\nGames Won: " + stats[1] + "\nWin Percentage: " + stats[2] + "%\nBest Time: " + String.format("%02d", (stats[3]) / 60) + ":" + String.format("%02d", (stats[3]) % 60));
+                            }
+                            else if (iTab.isShowing())
+                            {
+                                resetStats(4, 7);
+                                iTab.setText("Games Played: " + stats[4] +"\nGames Won: " + stats[5] + "\nWin Percentage: " + stats[6] + "%\nBest Time: " + String.format("%02d", (stats[7]) / 60) + ":" + String.format("%02d", (stats[7]) % 60));
                             }
                             else
-                                dialog.dispose();
+                            {
+                                resetStats(8, 11);
+                                eTab.setText("Games Played: " + stats[8] +"\nGames Won: " + stats[9] + "\nWin Percentage: " + stats[10] + "%\nBest Time: " + String.format("%02d", (stats[11]) / 60) + ":" + String.format("%02d", (stats[11]) % 60));
+                            }
+                            optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
                         }
+                        else
+                            dialog.dispose();
                     }
                 });  //Listener for the MessageDialog's Buttons
                 dialog.pack();
-                dialog.setIconImage((new ImageIcon(getClass().getClassLoader().getResource("icon.png"))).getImage());
+                dialog.setIconImage((new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/icon.png")))).getImage());
                 dialog.setModalityType(Dialog.ModalityType.APPLICATION_MODAL);
                 dialog.setLocationRelativeTo(Minesweeper.this);
                 dialog.setVisible(true);    
@@ -448,23 +423,22 @@ public class Minesweeper extends javax.swing.JFrame
     //Set the difficulty of the current game and instantiate the necessary variables tied to it
     private void setDifficulty()
     {
-        switch(difficulty)
-        {
-            case 0:     //Beginnner Radio Button has 0 component order
+        switch (difficulty) {
+            case 0 -> {     //Beginnner Radio Button has 0 component order
                 rows = 9;
                 cols = 9;
                 bombs = 10;
-                break;
-            case 1:     //Intermediate Radio Button has 1 component order
+            }
+            case 1 -> {     //Intermediate Radio Button has 1 component order
                 rows = 16;
                 cols = 16;
                 bombs = 40;
-                break;
-            case 2:     //Expert Radio Button has 2 component order
+            }
+            case 2 -> {     //Expert Radio Button has 2 component order
                 rows = 16;
                 cols = 30;
                 bombs = 99;
-                break;       
+            }
         }
     }
     
@@ -472,41 +446,37 @@ public class Minesweeper extends javax.swing.JFrame
     private void updateStats(Boolean won)
     {
         seconds--;  //for sync purposes
-        switch(difficulty)
-        {
-            case 0:
+        switch (difficulty) {
+            case 0 -> {
                 stats[0]++;
-                if (won)
-                {
+                if (won) {
                     stats[1]++;
                     if (seconds < stats[3] || stats[3] == 0)
-                        stats[3] = seconds;      
+                        stats[3] = seconds;
                 }
-                if (stats[1] !=0 && stats[0] != 0)
-                    stats[2] = (int)(((double)stats[1]/stats[0]) * 100);
-                break;
-            case 1:
+                if (stats[1] != 0 && stats[0] != 0)
+                    stats[2] = (int) (((double) stats[1] / stats[0]) * 100);
+            }
+            case 1 -> {
                 stats[4]++;
-                if (won)
-                {
+                if (won) {
                     stats[5]++;
                     if (seconds < stats[7] || stats[7] == 0)
                         stats[7] = seconds;
                 }
-                if (stats[5] !=0 && stats[4] != 0)
-                    stats[6] = (int)(((double)stats[5]/stats[4]) * 100);
-                break;
-            case 2:
+                if (stats[5] != 0 && stats[4] != 0)
+                    stats[6] = (int) (((double) stats[5] / stats[4]) * 100);
+            }
+            case 2 -> {
                 stats[8]++;
-                if (won)
-                {
+                if (won) {
                     stats[9]++;
                     if (seconds < stats[11] || stats[11] == 0)
                         stats[11] = seconds;
                 }
-                if (stats[8] !=0 && stats[9] != 0)
-                    stats[10] = (int)(((double)stats[9]/stats[8]) * 100);
-                break;
+                if (stats[8] != 0 && stats[9] != 0)
+                    stats[10] = (int) (((double) stats[9] / stats[8]) * 100);
+            }
         }
     }
     
@@ -519,9 +489,9 @@ public class Minesweeper extends javax.swing.JFrame
                                                Integer.toString(stats[4]), Integer.toString(stats[5]), Integer.toString(stats[6]), Integer.toString(stats[7]),
                                                Integer.toString(stats[8]), Integer.toString(stats[9]), Integer.toString(stats[10]), Integer.toString(stats[11]));
             Path file = Paths.get("Stats.mine");
-            Files.write(file, lines, Charset.forName("UTF-8"));
+            Files.write(file, lines, StandardCharsets.UTF_8);
         }
-        catch(IOException e){}
+        catch(IOException ignored) {}
     }
     
     //Checks if the user's custom difficulty inputs are appropriate and displays an error message if needed
@@ -578,7 +548,7 @@ public class Minesweeper extends javax.swing.JFrame
             return null;
         }   
         else    //If the path specified is the About file path, read the whole file and return it as a string
-            try(BufferedReader br2 = new BufferedReader(new java.io.InputStreamReader(getClass().getResourceAsStream(path))))
+            try(BufferedReader br2 = new BufferedReader(new java.io.InputStreamReader(Objects.requireNonNull(getClass().getResourceAsStream(path)))))
             {
                 StringBuilder sb = new StringBuilder();
                 String line = br2.readLine();
@@ -604,9 +574,8 @@ public class Minesweeper extends javax.swing.JFrame
     private void gameOver()
     {
         timer.stop();
-        for (int i = 0; i < bombLoc.length; i++)
-            revealCell(cells[bombLoc[i]].location);
-        statusIndicator.setIcon(new ImageIcon(getClass().getClassLoader().getResource("lose.png")));
+        for (int j : bombLoc) revealCell(cells[j].location);
+        statusIndicator.setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/lose.png"))));
         if (difficulty != 3)
         {
             updateStats(false);
@@ -637,7 +606,7 @@ public class Minesweeper extends javax.swing.JFrame
                         revealCell(n);
                         if (cells[n].bomb)
                         {
-                            cells[n].setIcon(new ImageIcon(getClass().getClassLoader().getResource("bomb2.png")));  //RED BOMB ICON
+                            cells[n].setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/bomb2.png"))));  //RED BOMB ICON
                             gameOver();
                         }
                     }
@@ -723,7 +692,7 @@ public class Minesweeper extends javax.swing.JFrame
                                             i - 1         ,           -1,
                                             -1            , -1      , -1};
         //WEST_EDGE
-        else if (i % cols == 0 && i != ((rows * cols - 1) - (cols - 1)) && i != 0)
+        else if (i % cols == 0 && i != ((rows * cols - 1) - (cols - 1)))
             cells[i].neighbors = new int[] {-1            , i - cols, i - (cols - 1),
                                             -1            ,           i + 1, 
                                             -1            , i + cols, i + (cols + 1)};
@@ -752,12 +721,10 @@ public class Minesweeper extends javax.swing.JFrame
     //Updates each cell's name depending on how many adjacent bombs there are    
     private void configCells()
     {
-        for (int i = 0; i < bombLoc.length; i++)
-        {
-            for (int j = 0; j < 8; j++)
-            {
-                if (cells[bombLoc[i]].neighbors[j] != -1 && cells[cells[bombLoc[i]].neighbors[j]].bomb == false)
-                    cells[cells[bombLoc[i]].neighbors[j]].setName(Integer.toString(Integer.parseInt(cells[cells[bombLoc[i]].neighbors[j]].getName()) + 1));
+        for (int k : bombLoc) {
+            for (int j = 0; j < 8; j++) {
+                if (cells[k].neighbors[j] != -1 && !cells[cells[k].neighbors[j]].bomb)
+                    cells[cells[k].neighbors[j]].setName(Integer.toString(Integer.parseInt(cells[cells[k].neighbors[j]].getName()) + 1));
             }
         }
     }
@@ -765,52 +732,34 @@ public class Minesweeper extends javax.swing.JFrame
     //Reveals the cell clicked by the user and changes the visuals of the cell depending on its Name value
     private void revealCell(int loc)
     {
-        switch(cells[loc].getName())
-        {
-            case "X":
+        switch (cells[loc].getName()) {
+            case "X" -> {
                 if (cells[loc].getIcon() == null)
-                    cells[loc].setIcon(new ImageIcon(getClass().getClassLoader().getResource("bomb1.png")));       //BOMB ICON
+                    cells[loc].setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/bomb1.png"))));       //BOMB ICON
                 else if (cells[loc].getIcon() == flag)
-                    cells[loc].setIcon(new ImageIcon(getClass().getClassLoader().getResource("bomb.png")));      //BOMB DEFUSED ICON
+                    cells[loc].setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/bomb.png"))));      //BOMB DEFUSED ICON
                 cells[loc].setBackground(new Color(222, 219, 219));    //LIGHT_GRAY
                 cells[loc].revealed = true;
                 return;
-            case "0":
+            }
+            case "0" -> {
                 cells[loc].setBackground(new Color(222, 219, 219));  //LIGHT_GRAY
                 cells[loc].setEnabled(false);
                 cells[loc].revealed = true;
                 //If the revealNeighbors method is already running for the current empty cell, ignore it. Else, it means a new empty cell is ready to be processed, so restart the process
-                if (!running)
-                {
+                if (!running) {
                     revealNeighbors(loc);
-                    return;
                 }
-                else
-                    return;
-            case "1":
-                col = Color.blue;
-                break;
-            case "2":
-                col = new Color(0,153,0);      //LIGHT_GREEN (somewhat)
-                break;
-            case "3":
-                col = Color.red;
-                break;
-            case "4":
-                col = new Color(77,176,230);  //LIGHT_BLUE
-                break;
-            case "5":
-                col = new Color(153,0,0);    //DARK_RED (somewhat)
-                break;
-            case "6":
-                col = Color.cyan;
-                break;
-            case "7":
-                col = Color.black;
-                break;
-            case "8":
-                col = Color.gray;
-                break;
+                return;
+            }
+            case "1" -> col = Color.blue;
+            case "2" -> col = new Color(0, 153, 0);      //LIGHT_GREEN (somewhat)
+            case "3" -> col = Color.red;
+            case "4" -> col = new Color(77, 176, 230);  //LIGHT_BLUE
+            case "5" -> col = new Color(153, 0, 0);    //DARK_RED (somewhat)
+            case "6" -> col = Color.cyan;
+            case "7" -> col = Color.black;
+            case "8" -> col = Color.gray;
         }
         cells[loc].setText(cells[loc].getName());
         cells[loc].setForeground(col);
@@ -898,11 +847,8 @@ public class Minesweeper extends javax.swing.JFrame
         timeIndicator.setToolTipText("");
         bombIndicator.setForeground(Color.RED);
         bombIndicator.setText(Integer.toString(bombs - bombsMarked));
-        statusIndicator.setIcon(new ImageIcon(getClass().getClassLoader().getResource("smiley.png")));
+        statusIndicator.setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/smiley.png"))));
         diffMenu.setEnabled(true);
         changedPreset = false;
     }    
 }
-//<editor-fold defaultstate="collapsed" desc="-TO DO LIST-">
- /* 
-*/ //</editor-fold>
