@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -45,6 +44,8 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
 
+import static minesweeper.utility.Icon.*;
+
 public class Minesweeper extends JFrame
 {
     private JPanel cellPanel, banner;
@@ -52,7 +53,6 @@ public class Minesweeper extends JFrame
     private JLabel timeIndicator, bombIndicator;
     private JMenu diffMenu;
     private Color col;
-    ImageIcon flag = new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/flag.png")));
     private int rows, cols, bombs, bombsMarked = 0, seconds = 0, difficulty = 2;    //SIZE OF GRID (ROWS * COLS) - AMOUNT OF BOMBS IN GAME - BOMBS MARKED BY THE USER - SECONDS ELAPSED - DIFFICULTY PRESET(SEE SETDIFFICULTY FUNCTION)
     private int[] bombLoc;                                                         //ARRAY FOR THE LOCATION OF EACH BOMB
     private MinesweeperButton[] cells;                                            //ARRAY THAT STORES ALL THE CELLS
@@ -77,7 +77,7 @@ public class Minesweeper extends JFrame
     {
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Minesweeper");
-        setIconImage((new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/icon.png")))).getImage());
+        setIconImage((ICON.getImage()));
         
         readFile("Stats.mine");  //Load the stats file into memory/or create/recreate the stats file if it doesnt exist/is corrupted
         createMenuBar();      
@@ -113,7 +113,7 @@ public class Minesweeper extends JFrame
                 if (e.getButton() == MouseEvent.BUTTON3 && !(((MinesweeperButton)e.getSource()).revealed | gameEnded | bombs != 0)) 
                 {
                     //If the icon of the cell clicked by the user is a flag, remove it.Else set it as flag
-                    if (((MinesweeperButton)e.getSource()).getIcon() == flag)
+                    if (((MinesweeperButton)e.getSource()).getIcon() == FLAG.getIcon())
                     {
                         bombIndicator.setText(Integer.toString(Integer.parseInt(bombIndicator.getText()) + 1));  //Update the indicator with the number of potential bombs left
                         ((MinesweeperButton)e.getSource()).setIcon(null);
@@ -123,14 +123,14 @@ public class Minesweeper extends JFrame
                     else if (((MinesweeperButton)e.getSource()).getText().equals(""))
                     {
                         bombIndicator.setText(Integer.toString(Integer.parseInt(bombIndicator.getText()) - 1)); //Update the indicator with the number of potential bombs left
-                        ((MinesweeperButton)e.getSource()).setIcon(flag);
+                        ((MinesweeperButton)e.getSource()).setIcon(FLAG.getIcon());
                         if (((MinesweeperButton)e.getSource()).bomb)
                             bombsMarked++;
                         //If the user has marked all the bombs, he wins
                         if (bombsMarked == bombLoc.length && Integer.parseInt(bombIndicator.getText()) == 0)
                         {
                             bombIndicator.setForeground(new Color(0,153,0));
-                            statusIndicator.setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/win.png"))));
+                            statusIndicator.setIcon(WIN.getIcon());
                             if (difficulty != 3)
                             {
                                 updateStats(true);
@@ -143,7 +143,7 @@ public class Minesweeper extends JFrame
                     }
                 }
                 //LEFT_MOUSE_PRESS -- LOSE CONDITIONS HERE
-                if (e.getButton() == MouseEvent.BUTTON1 && !(((MinesweeperButton)e.getSource()).revealed | gameEnded | ((MinesweeperButton)e.getSource()).getIcon() == flag))
+                if (e.getButton() == MouseEvent.BUTTON1 && !(((MinesweeperButton)e.getSource()).revealed | gameEnded | ((MinesweeperButton)e.getSource()).getIcon() == FLAG.getIcon()))
                 {
                     //If the bombs arent assigned yet, it means that this is the first click of the game
                     //So generate the bombs and configure the cells. Then reveal the cell clicked and any additional ones as needed
@@ -159,14 +159,14 @@ public class Minesweeper extends JFrame
                     //If button clicked is a bomb, reveal all the bombs and stop the game
                     if (((MinesweeperButton)e.getSource()).bomb)
                     {
-                        ((MinesweeperButton)e.getSource()).setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/bomb2.png"))));   //RED BOMB ICON
+                        ((MinesweeperButton)e.getSource()).setIcon(BOMB_EXPLODED.getIcon());
                         gameOver();
                     }
                     else
                         revealCell(((MinesweeperButton)e.getSource()).location);
                 }
                 //MIDDLE_MOUSE_PRESS -- Checks whether it should reveal all the cell's neighbors or highlight them
-                if (e.getButton() == MouseEvent.BUTTON2 && bombs == 0 && ((MinesweeperButton)e.getSource()).getIcon() != flag && ((MinesweeperButton)e.getSource()).revealed)
+                if (e.getButton() == MouseEvent.BUTTON2 && bombs == 0 && ((MinesweeperButton)e.getSource()).getIcon() != FLAG.getIcon() && ((MinesweeperButton)e.getSource()).revealed)
                 {
                     if (gameEnded)
                         return;
@@ -195,7 +195,7 @@ public class Minesweeper extends JFrame
         GridBagConstraints c = new GridBagConstraints();
         Font font = new Font("Verdana", Font.BOLD, 16);
         
-        statusIndicator = new JButton(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/smiley.png"))));
+        statusIndicator = new JButton(SMILEY.getIcon());
         statusIndicator.setPreferredSize(new java.awt.Dimension(60, 37));
         statusIndicator.setBorder(BorderFactory.createMatteBorder(3, 3, 3, 3, Color.BLACK));
         //If statusIndicator is pressed, restart the game
@@ -283,79 +283,69 @@ public class Minesweeper extends JFrame
         JMenuItem custom = new JMenuItem("Custom..");
         diffMenu.add(custom); 
         custom.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_4, KeyEvent.SHIFT_DOWN_MASK));  //SHIFT + 4 Custom Difficulty Keybind
-        custom.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent ae)
-            {
-                JTextField r = new JTextField();
-                JTextField c = new JTextField();
-                JTextField b = new JTextField();
-                JLabel inputInfo = new JLabel();    //INVALID INPUT LABEL
-                inputInfo.setForeground(Color.RED);
-                
-                JPanel inputPanel = new JPanel();
-                inputPanel.setLayout(new GridLayout(4, 2));
-                inputPanel.add(new JLabel("Rows:"));
-                inputPanel.add(r);
-                r.setToolTipText("Value must be between 5 and 25");
-                inputPanel.add(new JLabel("Columns:"));
-                inputPanel.add(c);
-                c.setToolTipText("Value must be between 5 and 45");
-                inputPanel.add(new JLabel("Mines:"));
-                inputPanel.add(b);
-                b.setToolTipText("Value must be less than (Rows X Cols) - 9");
-                inputPanel.add(inputInfo);
-                
-                Object[] options = {"Submit", "Cancel"};  //MessageDialog Buttons' Text
-                final JOptionPane optionPane = new JOptionPane(inputPanel, JOptionPane.PLAIN_MESSAGE, JOptionPane.OK_CANCEL_OPTION, null, options);
-                final javax.swing.JDialog dialog = new javax.swing.JDialog();
-                dialog.setTitle("Customize Difficulty");
-                dialog.setContentPane(optionPane);
-                
-                optionPane.addPropertyChangeListener(e -> {
-                    if (JOptionPane.VALUE_PROPERTY.equals(e.getPropertyName()))
-                    {
-                        if (optionPane.getValue() == JOptionPane.UNINITIALIZED_VALUE)  //Wait until the user clicks on a button
-                            return;
+        custom.addActionListener(ae -> {
+            JTextField r = new JTextField();
+            JTextField c = new JTextField();
+            JTextField b = new JTextField();
+            JLabel inputInfo = new JLabel();    //INVALID INPUT LABEL
+            inputInfo.setForeground(Color.RED);
 
-                        if (optionPane.getValue().equals(options[0]))   //if the user clicked on submit
+            JPanel inputPanel = new JPanel();
+            inputPanel.setLayout(new GridLayout(4, 2));
+            inputPanel.add(new JLabel("Rows:"));
+            inputPanel.add(r);
+            r.setToolTipText("Value must be between 5 and 25");
+            inputPanel.add(new JLabel("Columns:"));
+            inputPanel.add(c);
+            c.setToolTipText("Value must be between 5 and 45");
+            inputPanel.add(new JLabel("Mines:"));
+            inputPanel.add(b);
+            b.setToolTipText("Value must be less than (Rows X Cols) - 9");
+            inputPanel.add(inputInfo);
+
+            Object[] options = {"Submit", "Cancel"};  //MessageDialog Buttons' Text
+            final JOptionPane optionPane = new JOptionPane(inputPanel, JOptionPane.PLAIN_MESSAGE, JOptionPane.OK_CANCEL_OPTION, null, options);
+            final javax.swing.JDialog dialog = new javax.swing.JDialog();
+            dialog.setTitle("Customize Difficulty");
+            dialog.setContentPane(optionPane);
+
+            optionPane.addPropertyChangeListener(e -> {
+                if (JOptionPane.VALUE_PROPERTY.equals(e.getPropertyName()))
+                {
+                    if (optionPane.getValue() == JOptionPane.UNINITIALIZED_VALUE)  //Wait until the user clicks on a button
+                        return;
+
+                    if (optionPane.getValue().equals(options[0]))   //if the user clicked on submit
+                    {
+                        if (inputIsValid(r.getText(), c.getText(), b.getText(), inputInfo))  //and if the input is valid update the game's variables according to the input and restart the game
                         {
-                            if (inputIsValid(r.getText(), c.getText(), b.getText(), inputInfo))  //and if the input is valid update the game's variables according to the input and restart the game
-                            {
-                                rows = Integer.parseInt(r.getText());
-                                cols = Integer.parseInt(c.getText());
-                                bombs = Integer.parseInt(b.getText());
-                                difficulty = 3;  //CUSTOM SETTING ACCORDING TO THE ABOVE INPUTS
-                                rbGroup.clearSelection();
-                                changedPreset = true;
-                                dialog.dispose();
-                                restart();
-                            }
-                            else  //if the input is not valid, display an error message and reset the value of the optionPane
-                                optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE); //If the user presses the same button next time, without this being reseted, no property change event will be fired
-                        }
-                        else
+                            rows = Integer.parseInt(r.getText());
+                            cols = Integer.parseInt(c.getText());
+                            bombs = Integer.parseInt(b.getText());
+                            difficulty = 3;  //CUSTOM SETTING ACCORDING TO THE ABOVE INPUTS
+                            rbGroup.clearSelection();
+                            changedPreset = true;
                             dialog.dispose();
+                            restart();
+                        }
+                        else  //if the input is not valid, display an error message and reset the value of the optionPane
+                            optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE); //If the user presses the same button next time, without this being reseted, no property change event will be fired
                     }
-                });  //Listener for the MessageDialog's Buttons
-                dialog.pack();
-                dialog.setIconImage((new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/icon.png")))).getImage());
-                dialog.setVisible(true);
-                dialog.setLocationRelativeTo(Minesweeper.this);
-            }
+                    else
+                        dialog.dispose();
+                }
+            });  //Listener for the MessageDialog's Buttons
+            dialog.pack();
+            dialog.setIconImage(ICON.getImage());
+            dialog.setVisible(true);
+            dialog.setLocationRelativeTo(Minesweeper.this);
         });     //Listener for the Custom Menu Item that brings up a MessageDialog where the user can input his custom difficulty
         
         //About Menu and Listener for MessageDialog
         JMenuItem about = new JMenuItem("About");
         about.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));  //F1 Keybind for the "About" MessageDialog
         gameMenu.add(about);
-        about.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent ae) 
-            {
-                JOptionPane.showMessageDialog(Minesweeper.this, readFile("/About.mine"), "About", JOptionPane.PLAIN_MESSAGE, new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/icon.png"))));
-            }
-        });    //Clicking on "About" loads information from a txt file
+        about.addActionListener(ae -> JOptionPane.showMessageDialog(Minesweeper.this, readFile("/About.mine"), "About", JOptionPane.PLAIN_MESSAGE, ICON.getIcon()));    //Clicking on "About" loads information from a txt file
         
         //Stats Menu and Listener for MessageDialog
         JMenu statsMenu = new JMenu("Stats");
@@ -410,7 +400,7 @@ public class Minesweeper extends JFrame
                     }
                 });  //Listener for the MessageDialog's Buttons
                 dialog.pack();
-                dialog.setIconImage((new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/icon.png")))).getImage());
+                dialog.setIconImage(ICON.getImage());
                 dialog.setModalityType(Dialog.ModalityType.APPLICATION_MODAL);
                 dialog.setLocationRelativeTo(Minesweeper.this);
                 dialog.setVisible(true);    
@@ -575,7 +565,7 @@ public class Minesweeper extends JFrame
     {
         timer.stop();
         for (int j : bombLoc) revealCell(cells[j].location);
-        statusIndicator.setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/lose.png"))));
+        statusIndicator.setIcon(LOSE.getIcon());
         if (difficulty != 3)
         {
             updateStats(false);
@@ -592,7 +582,7 @@ public class Minesweeper extends JFrame
         int flagged = 0; //How many cells the user has marked
         for (int i = 0; i < 8; i++)
         {
-            if (((MinesweeperButton)e.getSource()).neighbors[i] != -1 && cells[((MinesweeperButton)e.getSource()).neighbors[i]].getIcon() == flag)
+            if (((MinesweeperButton)e.getSource()).neighbors[i] != -1 && cells[((MinesweeperButton)e.getSource()).neighbors[i]].getIcon() == FLAG.getIcon())
                 flagged++;
         }
         if (flagged >= Integer.parseInt(((MinesweeperButton)e.getSource()).getName()))
@@ -601,12 +591,12 @@ public class Minesweeper extends JFrame
             {
                 if (n != -1)
                 {
-                    if (cells[n].getIcon() != flag && !cells[n].revealed)
+                    if (cells[n].getIcon() != FLAG.getIcon() && !cells[n].revealed)
                     {
                         revealCell(n);
                         if (cells[n].bomb)
                         {
-                            cells[n].setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/bomb2.png"))));  //RED BOMB ICON
+                            cells[n].setIcon(BOMB_EXPLODED.getIcon());
                             gameOver();
                         }
                     }
@@ -625,7 +615,7 @@ public class Minesweeper extends JFrame
             {
                 if (n != -1)
                 {
-                    if (cells[n].getIcon() != flag && !cells[n].revealed)
+                    if (cells[n].getIcon() != FLAG.getIcon() && !cells[n].revealed)
                         cells[n].getModel().setRollover(state);
                 }
             }   
@@ -735,9 +725,9 @@ public class Minesweeper extends JFrame
         switch (cells[loc].getName()) {
             case "X" -> {
                 if (cells[loc].getIcon() == null)
-                    cells[loc].setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/bomb1.png"))));       //BOMB ICON
-                else if (cells[loc].getIcon() == flag)
-                    cells[loc].setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/bomb.png"))));      //BOMB DEFUSED ICON
+                    cells[loc].setIcon(BOMB.getIcon());
+                else if (cells[loc].getIcon() == FLAG.getIcon())
+                    cells[loc].setIcon(BOMB_DEFUSED.getIcon());
                 cells[loc].setBackground(new Color(222, 219, 219));    //LIGHT_GRAY
                 cells[loc].revealed = true;
                 return;
@@ -847,7 +837,7 @@ public class Minesweeper extends JFrame
         timeIndicator.setToolTipText("");
         bombIndicator.setForeground(Color.RED);
         bombIndicator.setText(Integer.toString(bombs - bombsMarked));
-        statusIndicator.setIcon(new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource("resources/smiley.png"))));
+        statusIndicator.setIcon(SMILEY.getIcon());
         diffMenu.setEnabled(true);
         changedPreset = false;
     }    
