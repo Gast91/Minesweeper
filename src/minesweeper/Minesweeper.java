@@ -1,5 +1,6 @@
 package minesweeper;
 
+import minesweeper.banner.TimeIndicator;
 import minesweeper.difficulty.CustomDifficulty;
 import minesweeper.difficulty.Difficulty;
 import minesweeper.difficulty.DifficultyPreset;
@@ -17,8 +18,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -30,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -49,7 +49,6 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
-import javax.swing.Timer;
 
 import static java.util.function.Predicate.not;
 import static minesweeper.utility.Icon.*;
@@ -57,20 +56,14 @@ import static minesweeper.utility.Icon.*;
 public class Minesweeper extends JFrame {
     private JPanel cellPanel, banner;
     private JButton statusIndicator;
-    private JLabel timeIndicator, bombIndicator;
+    private JLabel bombIndicator;
+    private static TimeIndicator timeIndicator;
     private JMenu diffMenu;
-    private int seconds = 0;
     private int[] bombLoc;
     private MinesweeperButton[] cells;
-    private final int[] stats = new int[] {0, 0, 0 ,0 ,0 ,0 , 0, 0, 0, 0, 0, 0};//ARRAY THAT STORES IN MEMORY THE USER'S STATS TAKEN FROM A FILE (ORDER: BEG/INTER/EXP - GAMES PLAYED, WON, %, BEST TIME)
+    private final long[] stats = new long[] {0, 0, 0 ,0 ,0 ,0 , 0, 0, 0, 0, 0, 0};//ARRAY THAT STORES IN MEMORY THE USER'S STATS TAKEN FROM A FILE (ORDER: BEG/INTER/EXP - GAMES PLAYED, WON, %, BEST TIME)
+
     private static final MinesweeperGameManager gameManager = MinesweeperGameManager.getInstance();
-    Timer timer = new Timer(1000, new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent ae) 
-        {
-            timeIndicator.setText(Integer.toString(seconds++));
-        }
-    });        //TIMER FOR SECONDS ELAPSED - MOUSING OVER TIMEINDICATOR DISPLAYS TIME AS MM:SS
 
     public MinesweeperButton getCell(int position) {
         return cells[position];
@@ -159,8 +152,7 @@ public class Minesweeper extends JFrame {
             diffMenu.setEnabled(false);
             generateBombs(selected);
             selected.reveal();
-            timeIndicator.setText(Integer.toString(seconds++));
-            timer.start();
+            timeIndicator.startTimer();
             gameManager.setGameStatus(GameStatus.RUNNING);
         } else if (selected.isBomb()) gameOver(selected);
         else selected.reveal();
@@ -182,12 +174,11 @@ public class Minesweeper extends JFrame {
                 bombIndicator.setForeground(new Color(0,153,0));
                 statusIndicator.setIcon(WIN.getIcon());
                 if (gameManager.getDifficulty() != DifficultyPreset.CUSTOM) {
-                    updateStats(true);
+                    updateStats(true, gameManager.getDifficulty().getType(), timeIndicator.stopTimer());
                     updateStats();
                 }
                 gameManager.setGameStatus(GameStatus.WON);
                 diffMenu.setEnabled(true);
-                timer.stop();
             }
         }
     }
@@ -212,22 +203,7 @@ public class Minesweeper extends JFrame {
             }
         });
       
-        timeIndicator = new JLabel(Integer.toString(seconds), SwingConstants.CENTER);
-        timeIndicator.setBorder(BorderFactory.createMatteBorder(3, 0, 3, 3, Color.BLACK));
-        timeIndicator.setBackground(Color.WHITE);
-        timeIndicator.setOpaque(true);
-        timeIndicator.setPreferredSize(new java.awt.Dimension(70, 20));
-        timeIndicator.setFont(font);
-        //When the user mouses over the timeIndicator, update the label's tooltip text with the current time formatted as MM:SS
-        timeIndicator.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e)
-            {
-                int s = gameManager.isGameRunning() ? seconds : seconds - 1;
-                if (seconds >= 60)   //Displays the formatted time only if a minute has elapsed. Format time as MM:SS (minus a second to sync the tooltip with the constantly increasing label value)
-                    timeIndicator.setToolTipText(String.format("%02d", (s) / 60) + ":" + String.format("%02d", (s) % 60));
-            }
-        });
+        timeIndicator = new TimeIndicator(font);
         javax.swing.ToolTipManager.sharedInstance().setInitialDelay(250);   //Decrease the initial delay for showing the tooltip and increase the dismiss delay (from 750 to 250 and 4000 to 6000ms respectively)
         javax.swing.ToolTipManager.sharedInstance().setDismissDelay(6000);
         
@@ -414,40 +390,37 @@ public class Minesweeper extends JFrame {
     }
     
     //Updates the stats array after a game has ended
-    private void updateStats(Boolean won)
-    {
-        DifficultyPreset difficulty = gameManager.getDifficulty().getType();
-        seconds--;  //for sync purposes
+    private void updateStats(Boolean won, DifficultyPreset difficulty, Duration timeTaken) {
         switch (difficulty) {
             case BEGINNER -> {
                 stats[0]++;
                 if (won) {
                     stats[1]++;
-                    if (seconds < stats[3] || stats[3] == 0)
-                        stats[3] = seconds;
+                    if (timeTaken.getSeconds() < stats[3] || stats[3] == 0)
+                        stats[3] = timeTaken.getSeconds();
                 }
                 if (stats[1] != 0 && stats[0] != 0)
-                    stats[2] = (int) (((double) stats[1] / stats[0]) * 100);
+                    stats[2] = (long) (((double) stats[1] / stats[0]) * 100);
             }
             case INTERMEDIATE -> {
                 stats[4]++;
                 if (won) {
                     stats[5]++;
-                    if (seconds < stats[7] || stats[7] == 0)
-                        stats[7] = seconds;
+                    if (timeTaken.getSeconds() < stats[7] || stats[7] == 0)
+                        stats[7] = timeTaken.getSeconds();
                 }
                 if (stats[5] != 0 && stats[4] != 0)
-                    stats[6] = (int) (((double) stats[5] / stats[4]) * 100);
+                    stats[6] = (long) (((double) stats[5] / stats[4]) * 100);
             }
             case EXPERT -> {
                 stats[8]++;
                 if (won) {
                     stats[9]++;
-                    if (seconds < stats[11] || stats[11] == 0)
-                        stats[11] = seconds;
+                    if (timeTaken.getSeconds() < stats[11] || stats[11] == 0)
+                        stats[11] = timeTaken.getSeconds();
                 }
                 if (stats[8] != 0 && stats[9] != 0)
-                    stats[10] = (int) (((double) stats[9] / stats[8]) * 100);
+                    stats[10] = (long) (((double) stats[9] / stats[8]) * 100);
             }
         }
     }
@@ -457,9 +430,9 @@ public class Minesweeper extends JFrame {
     {
         try
         {
-            List<String> lines = Arrays.asList(Integer.toString(stats[0]), Integer.toString(stats[1]), Integer.toString(stats[2]), Integer.toString(stats[3]),
-                                               Integer.toString(stats[4]), Integer.toString(stats[5]), Integer.toString(stats[6]), Integer.toString(stats[7]),
-                                               Integer.toString(stats[8]), Integer.toString(stats[9]), Integer.toString(stats[10]), Integer.toString(stats[11]));
+            List<String> lines = Arrays.asList(Long.toString(stats[0]), Long.toString(stats[1]), Long.toString(stats[2]), Long.toString(stats[3]),
+                                               Long.toString(stats[4]), Long.toString(stats[5]), Long.toString(stats[6]), Long.toString(stats[7]),
+                                               Long.toString(stats[8]), Long.toString(stats[9]), Long.toString(stats[10]), Long.toString(stats[11]));
             Path file = Paths.get("Stats.mine");
             Files.write(file, lines, StandardCharsets.UTF_8);
         }
@@ -545,13 +518,12 @@ public class Minesweeper extends JFrame {
     //Reveal all the bombs and stop the game if a bomb is revealed
     private void gameOver(MinesweeperButton selected)
     {
-        timer.stop();
         selected.setIcon(BOMB_EXPLODED.getIcon());
         for (int j : bombLoc) cells[j].reveal();
         statusIndicator.setIcon(LOSE.getIcon());
         if (gameManager.getDifficulty() != DifficultyPreset.CUSTOM)
         {
-            updateStats(false);
+            updateStats(false, gameManager.getDifficulty().getType(), timeIndicator.stopTimer());
             updateStats();
         }
         gameManager.setGameStatus(GameStatus.LOST);
@@ -623,7 +595,6 @@ public class Minesweeper extends JFrame {
     //Reset all the game variables, cells and flags; place new random bombs and await player input to reconfigure the cells
     private void restart()
     {
-        timer.stop();
         //If the user requested a change in difficulty, get rid of the current panel and each components and recreate the grid with the correct values
         if (gameManager.hasPresetChanged())
         {
@@ -644,8 +615,7 @@ public class Minesweeper extends JFrame {
             for (MinesweeperButton cell : cells) cell.reset();
 
         gameManager.reset();
-        timeIndicator.setText(Integer.toString(seconds = 0));
-        timeIndicator.setToolTipText("");
+        timeIndicator.reset();
         bombIndicator.setForeground(Color.RED);
         bombIndicator.setText(gameManager.getDifficulty().bombCountToString());
         statusIndicator.setIcon(SMILEY.getIcon());
