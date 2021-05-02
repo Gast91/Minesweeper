@@ -1,6 +1,8 @@
 package minesweeper;
 
 import minesweeper.banner.BombIndicator;
+import minesweeper.banner.StatusIndicator;
+import minesweeper.banner.StatusIndicatorClickedListener;
 import minesweeper.banner.TimeIndicator;
 import minesweeper.difficulty.CustomDifficulty;
 import minesweeper.difficulty.Difficulty;
@@ -37,7 +39,6 @@ import java.util.Objects;
 import java.util.Random;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
-import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -55,7 +56,7 @@ import static minesweeper.utility.Icon.*;
 
 public class Minesweeper extends JFrame {
     private JPanel cellPanel, banner;
-    private JButton statusIndicator;
+    private static StatusIndicator statusIndicator;
     private static BombIndicator bombIndicator;
     private static TimeIndicator timeIndicator;
     private JMenu diffMenu;
@@ -189,20 +190,9 @@ public class Minesweeper extends JFrame {
     {
         banner = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
-        Font font = new Font("Verdana", Font.BOLD, 16);
+        final Font font = new Font("Verdana", Font.BOLD, 16);
         
-        statusIndicator = new JButton(SMILEY.getIcon());
-        statusIndicator.setPreferredSize(new java.awt.Dimension(60, 37));
-        statusIndicator.setBorder(BorderFactory.createMatteBorder(3, 3, 3, 3, Color.BLACK));
-        //If statusIndicator is pressed, restart the game
-        statusIndicator.addMouseListener(new MouseAdapter() {  
-            @Override
-            public void mousePressed(MouseEvent e) 
-            {
-                if (e.getButton() == MouseEvent.BUTTON1 && !gameManager.isGameWaiting())
-                    restart();
-            }
-        });
+        statusIndicator = new StatusIndicator(onStatusIndicatorClick());
       
         timeIndicator = new TimeIndicator(font);
         javax.swing.ToolTipManager.sharedInstance().setInitialDelay(250);   //Decrease the initial delay for showing the tooltip and increase the dismiss delay (from 750 to 250 and 4000 to 6000ms respectively)
@@ -612,8 +602,15 @@ public class Minesweeper extends JFrame {
         gameManager.reset();
         timeIndicator.reset();
         bombIndicator.reset(gameManager.getDifficulty().getBombCount());
-        statusIndicator.setIcon(SMILEY.getIcon());
+        statusIndicator.reset();
         diffMenu.setEnabled(true);
         gameManager.setPresetChanged(false);
+    }
+
+    private StatusIndicatorClickedListener onStatusIndicatorClick() {
+        return e -> {
+            if (e.getButton() == MouseEvent.BUTTON1 && !gameManager.isGameWaiting())
+                restart();
+        };
     }
 }
