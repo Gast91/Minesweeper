@@ -103,28 +103,26 @@ public class Minesweeper extends JFrame
         cellPanel = new JPanel(new GridLayout(rows, cols));
         for (int i = 0; i < rows * cols; i++)
         {   
-            cells[i] = new MinesweeperButton();
-            cells[i].setPreferredSize(new java.awt.Dimension(42,40));
-            cells[i].setFocusable(false);
+            cells[i] = new MinesweeperButton(i, rows, cols);
             cells[i].addMouseListener(new MouseAdapter() {  
             @Override
             public void mousePressed(MouseEvent e) {
                 //RIGHT_MOUSE_PRESS -- WIN CONDITIONS HERE
-                if (e.getButton() == MouseEvent.BUTTON3 && !(((MinesweeperButton)e.getSource()).revealed | gameEnded | bombs != 0)) 
+                if (e.getButton() == MouseEvent.BUTTON3 && !(((MinesweeperButton)e.getSource()).isRevealed() | gameEnded | bombs != 0))
                 {
                     //If the icon of the cell clicked by the user is a flag, remove it.Else set it as flag
-                    if (((MinesweeperButton)e.getSource()).getIcon() == FLAG.getIcon())
+                    if (((MinesweeperButton)e.getSource()).isFlagged())
                     {
                         bombIndicator.setText(Integer.toString(Integer.parseInt(bombIndicator.getText()) + 1));  //Update the indicator with the number of potential bombs left
                         ((MinesweeperButton)e.getSource()).setIcon(null);
-                        if (((MinesweeperButton)e.getSource()).bomb)
+                        if (((MinesweeperButton)e.getSource()).isBomb())
                             bombsMarked--;
                     }
                     else if (((MinesweeperButton)e.getSource()).getText().equals(""))
                     {
                         bombIndicator.setText(Integer.toString(Integer.parseInt(bombIndicator.getText()) - 1)); //Update the indicator with the number of potential bombs left
                         ((MinesweeperButton)e.getSource()).setIcon(FLAG.getIcon());
-                        if (((MinesweeperButton)e.getSource()).bomb)
+                        if (((MinesweeperButton)e.getSource()).isBomb())
                             bombsMarked++;
                         //If the user has marked all the bombs, he wins
                         if (bombsMarked == bombLoc.length && Integer.parseInt(bombIndicator.getText()) == 0)
@@ -143,7 +141,7 @@ public class Minesweeper extends JFrame
                     }
                 }
                 //LEFT_MOUSE_PRESS -- LOSE CONDITIONS HERE
-                if (e.getButton() == MouseEvent.BUTTON1 && !(((MinesweeperButton)e.getSource()).revealed | gameEnded | ((MinesweeperButton)e.getSource()).getIcon() == FLAG.getIcon()))
+                if (e.getButton() == MouseEvent.BUTTON1 && !(((MinesweeperButton)e.getSource()).isRevealed() | gameEnded | ((MinesweeperButton)e.getSource()).isFlagged()))
                 {
                     //If the bombs arent assigned yet, it means that this is the first click of the game
                     //So generate the bombs and configure the cells. Then reveal the cell clicked and any additional ones as needed
@@ -152,21 +150,21 @@ public class Minesweeper extends JFrame
                         diffMenu.setEnabled(false);
                         placeBombs(e);
                         configCells();
-                        revealCell(((MinesweeperButton)e.getSource()).location);
+                        revealCell(((MinesweeperButton)e.getSource()).getPosition());
                         timeIndicator.setText(Integer.toString(seconds++));
                         timer.start();
                     }
                     //If button clicked is a bomb, reveal all the bombs and stop the game
-                    if (((MinesweeperButton)e.getSource()).bomb)
+                    if (((MinesweeperButton)e.getSource()).isBomb())
                     {
                         ((MinesweeperButton)e.getSource()).setIcon(BOMB_EXPLODED.getIcon());
                         gameOver();
                     }
                     else
-                        revealCell(((MinesweeperButton)e.getSource()).location);
+                        revealCell(((MinesweeperButton)e.getSource()).getPosition());
                 }
                 //MIDDLE_MOUSE_PRESS -- Checks whether it should reveal all the cell's neighbors or highlight them
-                if (e.getButton() == MouseEvent.BUTTON2 && bombs == 0 && ((MinesweeperButton)e.getSource()).getIcon() != FLAG.getIcon() && ((MinesweeperButton)e.getSource()).revealed)
+                if (e.getButton() == MouseEvent.BUTTON2 && bombs == 0 && !((MinesweeperButton)e.getSource()).isFlagged() && ((MinesweeperButton)e.getSource()).isRevealed())
                 {
                     if (gameEnded)
                         return;
@@ -175,14 +173,10 @@ public class Minesweeper extends JFrame
             }   //LEFT, RIGHT AND MIDDLE MOUSE BUTTONS LISTENERS
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (e.getButton() == MouseEvent.BUTTON2 && ((MinesweeperButton)e.getSource()).highlight)
+                if (e.getButton() == MouseEvent.BUTTON2 && ((MinesweeperButton)e.getSource()).isHighlighted())
                     highlightNeighbors(e, false);
             }   //If the button released is the mouse wheel and if the cell's neighbors are highlighted, remove that highlight
             }); //MOUSE LISTENER FOR ALL THE CELLS
-            cells[i].setName("0");
-            cells[i].location = i;
-            //Determine the neighbors of each cell
-            determineNeighbors(i);
             cellPanel.add(cells[i]);
             cellPanel.setBorder(BorderFactory.createMatteBorder(3, 3, 3, 3, Color.BLACK));  //ARGS => TOP, BOTTOM, LEFT, RIGHT
         }
@@ -564,7 +558,7 @@ public class Minesweeper extends JFrame
     private void gameOver()
     {
         timer.stop();
-        for (int j : bombLoc) revealCell(cells[j].location);
+        for (int j : bombLoc) revealCell(cells[j].getPosition());
         statusIndicator.setIcon(LOSE.getIcon());
         if (difficulty != 3)
         {
@@ -580,21 +574,22 @@ public class Minesweeper extends JFrame
     private void checkFlags(MouseEvent e)
     {
         int flagged = 0; //How many cells the user has marked
+        int[] neighborsPositions = ((MinesweeperButton)e.getSource()).getNeighborsPositions();
         for (int i = 0; i < 8; i++)
         {
-            if (((MinesweeperButton)e.getSource()).neighbors[i] != -1 && cells[((MinesweeperButton)e.getSource()).neighbors[i]].getIcon() == FLAG.getIcon())
+            if ( neighborsPositions[i] != -1 && cells[neighborsPositions[i]].isFlagged())
                 flagged++;
         }
         if (flagged >= Integer.parseInt(((MinesweeperButton)e.getSource()).getName()))
         {
-            for (int n : ((MinesweeperButton)e.getSource()).neighbors)
+            for (int n : neighborsPositions)
             {
                 if (n != -1)
                 {
-                    if (cells[n].getIcon() != FLAG.getIcon() && !cells[n].revealed)
+                    if (!cells[n].isFlagged() && !cells[n].isRevealed())
                     {
                         revealCell(n);
-                        if (cells[n].bomb)
+                        if (cells[n].isBomb())
                         {
                             cells[n].setIcon(BOMB_EXPLODED.getIcon());
                             gameOver();
@@ -610,12 +605,12 @@ public class Minesweeper extends JFrame
     //Toggle the rollover state of the cell's neighbors on or off
     private void highlightNeighbors(MouseEvent e, boolean state)
     {
-        ((MinesweeperButton)e.getSource()).highlight = state;
-            for (int n : ((MinesweeperButton)e.getSource()).neighbors)
+        ((MinesweeperButton)e.getSource()).setHighlighted(state);
+            for (int n : ((MinesweeperButton)e.getSource()).getNeighborsPositions())
             {
                 if (n != -1)
                 {
-                    if (cells[n].getIcon() != FLAG.getIcon() && !cells[n].revealed)
+                    if (!cells[n].isFlagged() && !cells[n].isRevealed())
                         cells[n].getModel().setRollover(state);
                 }
             }   
@@ -632,10 +627,10 @@ public class Minesweeper extends JFrame
             
             //Making sure that the first cell the user clicks on is an empty cell and that its immediate neighboring cells arent bombs
             //If the above condition is satisfied and if the cell does not already contain a bomb, assign one to it
-            if (isValid(e, r) && !cells[r].bomb)
+            if (isValid(e, r) && !cells[r].isBomb())
             {
                     cells[r].setName("X");
-                    cells[r].bomb = true;
+                    cells[r].setBomb(true);
                     bombLoc[bombs-1] = r;
                     bombs--;
             }
@@ -646,66 +641,15 @@ public class Minesweeper extends JFrame
     private boolean isValid(MouseEvent e, int r)
     {
         //If the number generated is the location of the cell clicked by the user, return false
-        if (((MinesweeperButton)e.getSource()).location == r)   
+        if (((MinesweeperButton)e.getSource()).getPosition() == r)
             return false;
         //Check each neighbor of the cell first clicked by the user; if the number generated isnt one of them return true else return false
-        for (int n : ((MinesweeperButton)e.getSource()).neighbors)
+        for (int n : ((MinesweeperButton)e.getSource()).getNeighborsPositions())
         {
             if (n == r)
                 return false;
         }
         return true;
-    }
-    
-    //Checks how many eligible neighbors each cell has depending on its location on the grid
-    //and sets each cell's neighbor[] location appropriately
-    private void determineNeighbors(int i)
-    {
-        //TOP_LEFT_CORNER
-        if (i == 0)
-            cells[i].neighbors = new int[] {-1            , -1      , -1,
-                                            -1            ,           i + 1, 
-                                            -1            , i + cols, i + (cols + 1)};
-        //TOP_RIGHT_CORNER
-        else if (i == cols -1)
-            cells[i].neighbors = new int[] {-1             , -1      , -1,
-                                            i - 1          ,           -1, 
-                                            i + (cols - 1) , i + cols, -1};
-        //BOTTOM_LEFT_CORNER
-        else if (i == ((rows * cols - 1) - (cols - 1)))
-            cells[i].neighbors = new int[] {-1            , i - cols, i - (cols - 1),
-                                            -1                      , i + 1, 
-                                            -1            , -1      , -1};
-        //BOTTOM_RIGHT_CORNER
-        else if ( i == rows * cols - 1)
-            cells[i].neighbors = new int[] {i - (cols + 1), i - cols, -1,
-                                            i - 1         ,           -1,
-                                            -1            , -1      , -1};
-        //WEST_EDGE
-        else if (i % cols == 0 && i != ((rows * cols - 1) - (cols - 1)))
-            cells[i].neighbors = new int[] {-1            , i - cols, i - (cols - 1),
-                                            -1            ,           i + 1, 
-                                            -1            , i + cols, i + (cols + 1)};
-        //NORTH_EDGE
-        else if (i > 0 && i < cols -1)
-            cells[i].neighbors = new int[] {-1            , -1      , -1,
-                                            i - 1         ,           i + 1,
-                                            i + (cols - 1), i + cols, i + (cols + 1)};
-        //EAST_EDGE
-        else if ((i + 1) % cols == 0 && i != cols - 1 && i != (rows * cols - 1))
-            cells[i].neighbors = new int[] {i - (cols + 1), i - cols, -1,
-                                            i - 1         ,           -1,
-                                            i + (cols - 1), i + cols, -1};
-        //SOUTH_EDGE
-        else if (i > ((rows * cols - 1) - (cols - 1)) && i < (rows * cols - 1))
-            cells[i].neighbors = new int[] {i - (cols + 1), i - cols, i - (cols - 1),
-                                            i - 1         ,           i + 1,
-                                            -1            , -1      , -1};
-        //NOT_ON_THE_EDGE
-        else
-            cells[i].neighbors = new int[] {i - (cols + 1), i - cols, i - (cols - 1),
-                                            i - 1 ,                   i + 1, 
-                                            i + (cols - 1), i + cols, i + (cols + 1)};
     }
         
     //Updates each cell's name depending on how many adjacent bombs there are    
@@ -713,8 +657,9 @@ public class Minesweeper extends JFrame
     {
         for (int k : bombLoc) {
             for (int j = 0; j < 8; j++) {
-                if (cells[k].neighbors[j] != -1 && !cells[cells[k].neighbors[j]].bomb)
-                    cells[cells[k].neighbors[j]].setName(Integer.toString(Integer.parseInt(cells[cells[k].neighbors[j]].getName()) + 1));
+                int[] neighborsPositions = cells[k].getNeighborsPositions();
+                if (neighborsPositions[j] != -1 && !cells[neighborsPositions[j]].isBomb())
+                    cells[neighborsPositions[j]].setName(Integer.toString(Integer.parseInt(cells[neighborsPositions[j]].getName()) + 1));
             }
         }
     }
@@ -726,16 +671,16 @@ public class Minesweeper extends JFrame
             case "X" -> {
                 if (cells[loc].getIcon() == null)
                     cells[loc].setIcon(BOMB.getIcon());
-                else if (cells[loc].getIcon() == FLAG.getIcon())
+                else if (cells[loc].isFlagged())
                     cells[loc].setIcon(BOMB_DEFUSED.getIcon());
                 cells[loc].setBackground(new Color(222, 219, 219));    //LIGHT_GRAY
-                cells[loc].revealed = true;
+                cells[loc].setRevealed(true);
                 return;
             }
             case "0" -> {
                 cells[loc].setBackground(new Color(222, 219, 219));  //LIGHT_GRAY
                 cells[loc].setEnabled(false);
-                cells[loc].revealed = true;
+                cells[loc].setRevealed(true);
                 //If the revealNeighbors method is already running for the current empty cell, ignore it. Else, it means a new empty cell is ready to be processed, so restart the process
                 if (!running) {
                     revealNeighbors(loc);
@@ -754,7 +699,7 @@ public class Minesweeper extends JFrame
         cells[loc].setText(cells[loc].getName());
         cells[loc].setForeground(col);
         cells[loc].setBackground(new Color(222, 219, 219));  //LIGHT_GRAY
-        cells[loc].revealed = true;
+        cells[loc].setRevealed(true);
         cells[loc].setRolloverEnabled(false);               //DISABLE THE SELECT HIGHTLIGHT
         cells[loc].setModel(new javax.swing.DefaultButtonModel(){
             
@@ -771,14 +716,15 @@ public class Minesweeper extends JFrame
     {
         //Flag to avoid infinite recursion over the same elements in the list
         running = true;
-        
+
+        int[] neighborsPositions = cells[loc].getNeighborsPositions();
         for (int i = 0; i < 8; i ++)
         {
-            if (cells[loc].neighbors[i] != -1)
+            if (neighborsPositions[i] != -1)
             {
-                if (cells[cells[loc].neighbors[i]].getName().equals("0") && !cells[cells[loc].neighbors[i]].revealed)
-                    emptyCells.add(cells[cells[loc].neighbors[i]]);
-                revealCell(cells[loc].neighbors[i]);
+                if (cells[neighborsPositions[i]].getName().equals("0") && !cells[neighborsPositions[i]].isRevealed())
+                    emptyCells.add(cells[neighborsPositions[i]]);
+                revealCell(neighborsPositions[i]);
             }
         }
         //When the current empty cell and its immediate neighbors are processed, change the flag to true and move to the next empty cell on the list
@@ -791,7 +737,7 @@ public class Minesweeper extends JFrame
             
             //Remove the current empty cell from the list and reveal itself and its immediate neighbors
             cell.remove();
-            revealCell(temp.location);
+            revealCell(temp.getPosition());
         }
     }
     
@@ -823,8 +769,8 @@ public class Minesweeper extends JFrame
                 cells[i].setText("");
                 cells[i].setBackground(null);
                 cells[i].setIcon(null);
-                cells[i].bomb = false;
-                cells[i].revealed = false;
+                cells[i].setBomb(false);
+                cells[i].setRevealed(false);
                 cells[i].setEnabled(true);
                 cells[i].setRolloverEnabled(true);
             }
