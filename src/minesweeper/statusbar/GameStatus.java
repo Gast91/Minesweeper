@@ -1,4 +1,4 @@
-package minesweeper;
+package minesweeper.statusbar;
 
 import java.awt.Color;
 

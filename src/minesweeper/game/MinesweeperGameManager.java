@@ -7,7 +7,7 @@ import minesweeper.difficulty.DifficultyPreset;
 import minesweeper.game.cells.CellValue;
 import minesweeper.game.cells.MinesweeperButton;
 import minesweeper.stats.GameStats;
-import minesweeper.GameStatus;
+import minesweeper.statusbar.GameStatus;
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -90,7 +90,7 @@ public class MinesweeperGameManager {
                 Minesweeper.banner.getStatusIndicator().setIcon(WIN.getIcon());
                 GameStats.getInstance().updateStats(true, difficulty.getType(), Minesweeper.banner.getTimeIndicator().stopTimer());
                 Minesweeper.menuBar.setDifficultyMenuEnabled(true);
-                gameStatus = GameStatus.WON;
+                Minesweeper.statusBar.update(gameStatus = GameStatus.WON);
             }
         }
     }
@@ -152,7 +152,7 @@ public class MinesweeperGameManager {
             generateBombs(selected);
             selected.reveal();
             Minesweeper.banner.getTimeIndicator().startTimer();
-            gameStatus = GameStatus.RUNNING;
+            Minesweeper.statusBar.update(gameStatus = GameStatus.RUNNING);
         } else if (selected.isBomb()) gameOver(selected);
         else selected.reveal();
     }
@@ -206,6 +206,6 @@ public class MinesweeperGameManager {
         Minesweeper.banner.getStatusIndicator().setIcon(LOSE.getIcon());
         GameStats.getInstance().updateStats(false, difficulty.getType(), Minesweeper.banner.getTimeIndicator().stopTimer());
         Minesweeper.menuBar.setDifficultyMenuEnabled(true);
-        gameStatus = GameStatus.LOST;
+        Minesweeper.statusBar.update(gameStatus = GameStatus.LOST);
     }
 }
