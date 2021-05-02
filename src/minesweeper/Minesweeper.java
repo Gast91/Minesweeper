@@ -22,6 +22,7 @@ import java.awt.GridLayout;
 import java.awt.event.ItemEvent;
 import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
@@ -77,26 +78,24 @@ public class Minesweeper extends JFrame {
 
         createGrid();
 
-        add(banner, BorderLayout.NORTH);
         add(cellPanel);
         pack();
         
         setResizable(false);
         setLocationRelativeTo(null); 
     }
-    
-    // Creates the initial grid of size X and initialises all the cells (X = ROWS * COLS, specified by the user)  + MOUSE LISTENER FOR GRID
+
     private void createGrid() {
         Difficulty difficulty = gameManager.getDifficulty();
 
-        cells = new MinesweeperButton[difficulty.getDimensions().toArea()];
-        // Panel that stores all the cells
         cellPanel = new JPanel(new GridLayout(difficulty.getRows(), difficulty.getCols()));
-        for (int i = 0; i < difficulty.getDimensions().toArea(); i++) {
-            cells[i] = new MinesweeperButton(i, difficulty.getRows(), difficulty.getCols());
-            cells[i].addMouseListener(new MinesweeperMouseAdapter());
-            cellPanel.add(cells[i]);
-        }
+        cells = IntStream.range(0, difficulty.getDimensions().toArea())
+                .mapToObj(MinesweeperButton::new)
+                .peek(cell -> {
+                    cell.addMouseListener(new MinesweeperMouseAdapter());
+                    cellPanel.add(cell);
+                })
+                .toArray(MinesweeperButton[]::new);
         cellPanel.setBorder(BorderFactory.createMatteBorder(3, 3, 3, 3, Color.BLACK));
     }
 

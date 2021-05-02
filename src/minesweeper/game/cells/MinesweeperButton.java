@@ -18,12 +18,12 @@ public class MinesweeperButton extends JButton {
     private CellValue value;
     private int[] neighborsPositions;
 
-    public MinesweeperButton(int position, int rows, int cols) {
+    public MinesweeperButton(int position) {
         setPreferredSize(new java.awt.Dimension(42,40));
         setFocusable(false);
         value = CellValue.EMPTY;
         this.position = position;
-        findNeighborPositions(rows, cols);
+        findNeighborPositions();
     }
 
     public boolean isBomb() {
@@ -32,10 +32,6 @@ public class MinesweeperButton extends JButton {
 
     public boolean isRevealed() {
         return revealed;
-    }
-
-    public void setRevealed(boolean revealed) {
-        this.revealed = revealed;
     }
 
     public boolean isHighlighted() {
@@ -84,13 +80,11 @@ public class MinesweeperButton extends JButton {
 
     public Stream<MinesweeperButton> getNeighbors() {
         return Arrays.stream(neighborsPositions)
-                .filter(pos -> pos != -1)
                 .mapToObj(Minesweeper.getInstance()::getCell);
     }
 
     // Reveal the cell clicked by the user and change the visuals of the cell depending on its value
     public void reveal() {
-
         setBackground(new Color(222, 219, 219));
         revealed = true;
 
@@ -101,7 +95,6 @@ public class MinesweeperButton extends JButton {
         } else if (value == CellValue.EMPTY) {
             setEnabled(false);
             MinesweeperGameManager.getInstance().revealNeighbors(this);
-
         } else {
             setText(value.getText());
             setForeground(value.getTextColor());
@@ -127,57 +120,10 @@ public class MinesweeperButton extends JButton {
         setRolloverEnabled(true);
     }
 
-    /*Neighbors of the cell :
-    {Top_Left (-10) , Top_Middle (-9)   , Top_Right(-8),
-     Left (-1)      , CELL (0)          , Right(+1),
-    Bottom_Left (+8), Bottom_Middle (+9), Bottom_Right(+10)}
-    */
-    private void findNeighborPositions(int rows, int cols) {
-        //TOP_LEFT_CORNER
-        if (position == 0)
-            neighborsPositions = new int[] {-1            , -1      , -1,
-                                            -1            ,           position + 1,
-                                            -1            , position + cols, position + (cols + 1)};
-            //TOP_RIGHT_CORNER
-        else if (position == cols -1)
-            neighborsPositions = new int[] {-1             , -1      , -1,
-                    position - 1          ,           -1,
-                    position + (cols - 1) , position + cols, -1};
-            //BOTTOM_LEFT_CORNER
-        else if (position == ((rows * cols - 1) - (cols - 1)))
-            neighborsPositions = new int[] {-1            , position - cols, position - (cols - 1),
-                    -1                      , position + 1,
-                    -1            , -1      , -1};
-            //BOTTOM_RIGHT_CORNER
-        else if ( position == rows * cols - 1)
-            neighborsPositions = new int[] {position - (cols + 1), position - cols, -1,
-                    position - 1         ,           -1,
-                    -1            , -1      , -1};
-            //WEST_EDGE
-        else if (position % cols == 0 && position != ((rows * cols - 1) - (cols - 1)))
-            neighborsPositions = new int[] {-1            , position - cols, position - (cols - 1),
-                    -1            ,           position + 1,
-                    -1            , position + cols, position + (cols + 1)};
-            //NORTH_EDGE
-        else if (position > 0 && position < cols -1)
-            neighborsPositions = new int[] {-1            , -1      , -1,
-                    position - 1         ,           position + 1,
-                    position + (cols - 1), position + cols, position + (cols + 1)};
-            //EAST_EDGE
-        else if ((position + 1) % cols == 0 && position != cols - 1 && position != (rows * cols - 1))
-            neighborsPositions = new int[] {position - (cols + 1), position - cols, -1,
-                    position - 1         ,           -1,
-                    position + (cols - 1), position + cols, -1};
-            //SOUTH_EDGE
-        else if (position > ((rows * cols - 1) - (cols - 1)) && position < (rows * cols - 1))
-            neighborsPositions = new int[] {position - (cols + 1), position - cols, position - (cols - 1),
-                    position - 1         ,           position + 1,
-                    -1            , -1      , -1};
-            //NOT_ON_THE_EDGE
-        else
-            neighborsPositions = new int[] {position - (cols + 1), position - cols, position - (cols - 1),
-                    position - 1 ,                   position + 1,
-                    position + (cols - 1), position + cols, position + (cols + 1)};
+    private void findNeighborPositions() {
+        neighborsPositions = Coordinates.fromPosition(position).getNeighbors()
+                .filter(Coordinates::isInsideGrid)
+                .mapToInt(Coordinates::toPosition)
+                .toArray();
     }
-
 }
