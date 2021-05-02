@@ -1,5 +1,9 @@
 package minesweeper;
 
+import minesweeper.difficulty.CustomDifficulty;
+import minesweeper.difficulty.Difficulty;
+import minesweeper.difficulty.DifficultyPreset;
+import minesweeper.game.Dimensions;
 import minesweeper.game.cells.CellValue;
 import minesweeper.game.cells.MinesweeperButton;
 
@@ -54,7 +58,8 @@ public class Minesweeper extends JFrame {
     private JButton statusIndicator;
     private JLabel timeIndicator, bombIndicator;
     private JMenu diffMenu;
-    private int rows, cols, bombs, bombsMarked = 0, seconds = 0, difficulty = 2;    //SIZE OF GRID (ROWS * COLS) - AMOUNT OF BOMBS IN GAME - BOMBS MARKED BY THE USER - SECONDS ELAPSED - DIFFICULTY PRESET(SEE SETDIFFICULTY FUNCTION)
+    private int bombs, bombsMarked = 0, seconds = 0;
+    private Difficulty difficulty = DifficultyPreset.EXPERT;
     private int[] bombLoc;                                                         //ARRAY FOR THE LOCATION OF EACH BOMB
     private MinesweeperButton[] cells;                                            //ARRAY THAT STORES ALL THE CELLS
     private boolean running = false, gameEnded = false, changedPreset = false;
@@ -94,17 +99,15 @@ public class Minesweeper extends JFrame {
     }
     
     //Creates the initial grid of size X and initialises all the cells (X = ROWS * COLS, specified by the user)  + MOUSE LISTENER FOR GRID
-    private void createGrid()
-    {
-        if (difficulty != 3) //If the user has chosen a custom difficulty, skip setting the amount of rows, cols and bombs
-            setDifficulty();
-     
-        cells = new MinesweeperButton[rows * cols];
+    private void createGrid() {
+        bombs = difficulty.getBombCount();
+
+        cells = new MinesweeperButton[difficulty.getDimensions().toArea()];
         //Panel that stores all the cells
-        cellPanel = new JPanel(new GridLayout(rows, cols));
-        for (int i = 0; i < rows * cols; i++)
+        cellPanel = new JPanel(new GridLayout(difficulty.getRows(), difficulty.getCols()));
+        for (int i = 0; i < difficulty.getDimensions().toArea(); i++)
         {   
-            cells[i] = new MinesweeperButton(i, rows, cols);
+            cells[i] = new MinesweeperButton(i, difficulty.getRows(), difficulty.getCols());
             cells[i].addMouseListener(new MouseAdapter() {  
             @Override
             public void mousePressed(MouseEvent e) {
@@ -130,7 +133,7 @@ public class Minesweeper extends JFrame {
                         {
                             bombIndicator.setForeground(new Color(0,153,0));
                             statusIndicator.setIcon(WIN.getIcon());
-                            if (difficulty != 3)
+                            if (difficulty != DifficultyPreset.CUSTOM)
                             {
                                 updateStats(true);
                                 updateStats();
@@ -260,7 +263,7 @@ public class Minesweeper extends JFrame {
         diffMenu.add(new JRadioButtonMenuItem("Beginner"));
         diffMenu.add(new JRadioButtonMenuItem("Intermediate"));
         diffMenu.add(new JRadioButtonMenuItem("Expert"));
-        diffMenu.getItem(difficulty).setSelected(true);
+        diffMenu.getItem(difficulty.toInt()).setSelected(true);
         ButtonGroup rbGroup = new ButtonGroup();  
         for (int i = 0; i < 3; i++)
         {
@@ -269,7 +272,7 @@ public class Minesweeper extends JFrame {
                 //When a radio button is selected, set the difficulty according to the component order, mark that the preset changed and restart the game with the correct values
                 changedPreset = true;
                 if (e.getStateChange() == ItemEvent.SELECTED)
-                    difficulty = ((JMenuItem)e.getSource()).getParent().getComponentZOrder(((JMenuItem)e.getSource()));
+                    difficulty = DifficultyPreset.fromInt(((JMenuItem)e.getSource()).getParent().getComponentZOrder(((JMenuItem)e.getSource())));
                 restart();
             }); //Radio Button Listener
             diffMenu.getItem(i).setAccelerator(KeyStroke.getKeyStroke(i + 49, KeyEvent.SHIFT_DOWN_MASK));  //SHIFT + 1 TO 3 Difficulty Keybinds
@@ -314,10 +317,9 @@ public class Minesweeper extends JFrame {
                     {
                         if (inputIsValid(r.getText(), c.getText(), b.getText(), inputInfo))  //and if the input is valid update the game's variables according to the input and restart the game
                         {
-                            rows = Integer.parseInt(r.getText());
-                            cols = Integer.parseInt(c.getText());
-                            bombs = Integer.parseInt(b.getText());
-                            difficulty = 3;  //CUSTOM SETTING ACCORDING TO THE ABOVE INPUTS
+                            difficulty = new CustomDifficulty(
+                                    new Dimensions(Integer.parseInt(r.getText()), Integer.parseInt(c.getText())),
+                                    Integer.parseInt(b.getText()));
                             rbGroup.clearSelection();
                             changedPreset = true;
                             dialog.dispose();
@@ -405,34 +407,12 @@ public class Minesweeper extends JFrame {
         setJMenuBar(menuBar);
     }
     
-    //Set the difficulty of the current game and instantiate the necessary variables tied to it
-    private void setDifficulty()
-    {
-        switch (difficulty) {
-            case 0 -> {     //Beginnner Radio Button has 0 component order
-                rows = 9;
-                cols = 9;
-                bombs = 10;
-            }
-            case 1 -> {     //Intermediate Radio Button has 1 component order
-                rows = 16;
-                cols = 16;
-                bombs = 40;
-            }
-            case 2 -> {     //Expert Radio Button has 2 component order
-                rows = 16;
-                cols = 30;
-                bombs = 99;
-            }
-        }
-    }
-    
     //Updates the stats array after a game has ended
     private void updateStats(Boolean won)
     {
         seconds--;  //for sync purposes
-        switch (difficulty) {
-            case 0 -> {
+        switch (difficulty.getType()) {
+            case BEGINNER -> {
                 stats[0]++;
                 if (won) {
                     stats[1]++;
@@ -442,7 +422,7 @@ public class Minesweeper extends JFrame {
                 if (stats[1] != 0 && stats[0] != 0)
                     stats[2] = (int) (((double) stats[1] / stats[0]) * 100);
             }
-            case 1 -> {
+            case INTERMEDIATE -> {
                 stats[4]++;
                 if (won) {
                     stats[5]++;
@@ -452,7 +432,7 @@ public class Minesweeper extends JFrame {
                 if (stats[5] != 0 && stats[4] != 0)
                     stats[6] = (int) (((double) stats[5] / stats[4]) * 100);
             }
-            case 2 -> {
+            case EXPERT -> {
                 stats[8]++;
                 if (won) {
                     stats[9]++;
@@ -561,7 +541,7 @@ public class Minesweeper extends JFrame {
         timer.stop();
         for (int j : bombLoc) revealCell(cells[j].getPosition());
         statusIndicator.setIcon(LOSE.getIcon());
-        if (difficulty != 3)
+        if (difficulty != DifficultyPreset.CUSTOM)
         {
             updateStats(false);
             updateStats();
@@ -624,7 +604,7 @@ public class Minesweeper extends JFrame {
         while (bombs > 0)
         {
             //Random cell location between 0 and total number of cells
-            int r = (int) Math.floor(Math.random() * (rows * cols));
+            int r = (int) Math.floor(Math.random() * difficulty.getDimensions().toArea());
             
             //Making sure that the first cell the user clicks on is an empty cell and that its immediate neighboring cells arent bombs
             //If the above condition is satisfied and if the cell does not already contain a bomb, assign one to it
