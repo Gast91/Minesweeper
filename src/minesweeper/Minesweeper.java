@@ -8,6 +8,7 @@ import minesweeper.banner.TimeIndicator;
 import minesweeper.difficulty.Difficulty;
 import minesweeper.difficulty.DifficultyPreset;
 import minesweeper.game.MinesweeperGameManager;
+import minesweeper.game.MinesweeperMouseAdapter;
 import minesweeper.game.cells.MinesweeperButton;
 import minesweeper.menu.DifficultyMenu;
 import minesweeper.menu.MinesweeperMenuBar;
@@ -19,7 +20,6 @@ import java.awt.Container;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ItemEvent;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
@@ -85,48 +85,19 @@ public class Minesweeper extends JFrame {
         setLocationRelativeTo(null); 
     }
     
-    //Creates the initial grid of size X and initialises all the cells (X = ROWS * COLS, specified by the user)  + MOUSE LISTENER FOR GRID
+    // Creates the initial grid of size X and initialises all the cells (X = ROWS * COLS, specified by the user)  + MOUSE LISTENER FOR GRID
     private void createGrid() {
         Difficulty difficulty = gameManager.getDifficulty();
 
         cells = new MinesweeperButton[difficulty.getDimensions().toArea()];
-        //Panel that stores all the cells
+        // Panel that stores all the cells
         cellPanel = new JPanel(new GridLayout(difficulty.getRows(), difficulty.getCols()));
         for (int i = 0; i < difficulty.getDimensions().toArea(); i++) {
             cells[i] = new MinesweeperButton(i, difficulty.getRows(), difficulty.getCols());
-            cells[i].addMouseListener(new MouseAdapter() {  
-            @Override
-            public void mousePressed(MouseEvent e) {
-                MinesweeperButton selected = ((MinesweeperButton)e.getSource());
-                // Toggle cell flag; user can win if they mark the last bomb through this
-                if (e.getButton() == MouseEvent.BUTTON3
-                        && gameManager.isGameRunning()
-                        && !selected.isRevealed())
-                    gameManager.toggleFlag(selected);
-
-                // Start game if first reveal, check if bomb and end game or reveal otherwise
-                else if (e.getButton() == MouseEvent.BUTTON1
-                        && (gameManager.isGameWaiting() || gameManager.isGameRunning())
-                        && selected.inInitialState())
-                    gameManager.checkAndReveal(selected);
-
-                // Reveal (if flagged neighbors equal to cell value) or highlight neighbors
-                else if (e.getButton() == MouseEvent.BUTTON2
-                        && gameManager.isGameRunning()
-                        && !selected.isFlagged() && selected.isRevealed())
-                    gameManager.checkFlags(selected);
-            }
-
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                MinesweeperButton selected = ((MinesweeperButton)e.getSource());
-                if (e.getButton() == MouseEvent.BUTTON2 && selected.isHighlighted())
-                    gameManager.highlightNeighbors(selected, false);
-            }
-            });
+            cells[i].addMouseListener(new MinesweeperMouseAdapter());
             cellPanel.add(cells[i]);
-            cellPanel.setBorder(BorderFactory.createMatteBorder(3, 3, 3, 3, Color.BLACK));  //ARGS => TOP, BOTTOM, LEFT, RIGHT
         }
+        cellPanel.setBorder(BorderFactory.createMatteBorder(3, 3, 3, 3, Color.BLACK));
     }
 
     private void restart() {
