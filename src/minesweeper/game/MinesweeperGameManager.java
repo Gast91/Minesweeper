@@ -1,6 +1,5 @@
 package minesweeper.game;
 
-import minesweeper.GameStatus;
 import minesweeper.Minesweeper;
 import minesweeper.banner.BombIndicator;
 import minesweeper.difficulty.Difficulty;
@@ -8,6 +7,7 @@ import minesweeper.difficulty.DifficultyPreset;
 import minesweeper.game.cells.CellValue;
 import minesweeper.game.cells.MinesweeperButton;
 import minesweeper.stats.GameStats;
+import minesweeper.GameStatus;
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -17,7 +17,6 @@ import java.util.Random;
 
 import static java.util.function.Predicate.not;
 import static minesweeper.utility.Icon.*;
-import static minesweeper.utility.Icon.LOSE;
 
 public class MinesweeperGameManager {
 
@@ -192,7 +191,7 @@ public class MinesweeperGameManager {
     private void configureCells() {
         Arrays.stream(bombLoc)
                 .forEach( bl -> {
-                    MinesweeperButton currentCell = Minesweeper.getInstance().getCell(bl);
+                    MinesweeperButton currentCell = Minesweeper.gameGrid.getCell(bl);
                     currentCell.setValue(CellValue.BOMB);
                     currentCell.getNeighbors()
                             .filter(not(MinesweeperButton::isBomb))
@@ -203,7 +202,7 @@ public class MinesweeperGameManager {
     // Reveal all the bombs and stop the game if a bomb is revealed
     private void gameOver(MinesweeperButton selected) {
         selected.setIcon(BOMB_EXPLODED.getIcon());
-        for (int bl : bombLoc) Minesweeper.getInstance().getCell(bl).reveal();
+        for (int bl : bombLoc) Minesweeper.gameGrid.getCell(bl).reveal();
         Minesweeper.banner.getStatusIndicator().setIcon(LOSE.getIcon());
         GameStats.getInstance().updateStats(false, difficulty.getType(), Minesweeper.banner.getTimeIndicator().stopTimer());
         Minesweeper.menuBar.setDifficultyMenuEnabled(true);

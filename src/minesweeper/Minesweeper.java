@@ -8,52 +8,29 @@ import minesweeper.banner.TimeIndicator;
 import minesweeper.difficulty.Difficulty;
 import minesweeper.difficulty.DifficultyPreset;
 import minesweeper.game.MinesweeperGameManager;
-import minesweeper.game.MinesweeperMouseAdapter;
-import minesweeper.game.cells.MinesweeperButton;
+import minesweeper.game.MinesweeperGrid;
 import minesweeper.menu.DifficultyMenu;
 import minesweeper.menu.MinesweeperMenuBar;
 import minesweeper.menu.StatsMenu;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Container;
 import java.awt.Font;
-import java.awt.GridLayout;
 import java.awt.event.ItemEvent;
 import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
-import java.util.stream.IntStream;
-import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
-import javax.swing.JPanel;
 
 import static minesweeper.utility.Icon.*;
 
 public class Minesweeper extends JFrame {
     public static MinesweeperBanner banner;
     public static MinesweeperMenuBar menuBar;
-    private JPanel cellPanel;
-    private MinesweeperButton[] cells;
+    public static MinesweeperGrid gameGrid;
     private static final MinesweeperGameManager gameManager = MinesweeperGameManager.getInstance();
 
-    public MinesweeperButton getCell(int position) {
-        return cells[position];
-    }
-     
-    public static void main(String[] args)
-    {
-        instance = new Minesweeper();
-        instance.setVisible(true);
-    }
-
-    private static Minesweeper instance = null;
-
-    public static Minesweeper getInstance() {
-        if (instance == null)
-            instance = new Minesweeper();
-
-        return instance;
+    public static void main(String[] args) {
+        new Minesweeper().setVisible(true);
     }
 
     public Minesweeper()
@@ -76,49 +53,30 @@ public class Minesweeper extends JFrame {
                 .build();
         add(banner, BorderLayout.NORTH);
 
-        createGrid();
+        gameGrid = new MinesweeperGrid(gameManager.getDifficulty());
+        add(gameGrid);
 
-        add(cellPanel);
         pack();
         
         setResizable(false);
         setLocationRelativeTo(null); 
     }
 
-    private void createGrid() {
-        Difficulty difficulty = gameManager.getDifficulty();
-
-        cellPanel = new JPanel(new GridLayout(difficulty.getRows(), difficulty.getCols()));
-        cells = IntStream.range(0, difficulty.getDimensions().toArea())
-                .mapToObj(MinesweeperButton::new)
-                .peek(cell -> {
-                    cell.addMouseListener(new MinesweeperMouseAdapter());
-                    cellPanel.add(cell);
-                })
-                .toArray(MinesweeperButton[]::new);
-        cellPanel.setBorder(BorderFactory.createMatteBorder(3, 3, 3, 3, Color.BLACK));
-    }
-
     private void restart() {
+        final Difficulty newDifficulty = gameManager.getDifficulty();
+        banner.reset(newDifficulty.getBombCount());
+        gameGrid.reset(newDifficulty);
+        gameManager.reset();
+
         if (gameManager.hasPresetChanged()) {
-            Container c = cellPanel.getParent();
-            c.remove(cellPanel);
-
-            createGrid();
-            c.add(cellPanel);
-
             //revalidate();
             repaint();
             pack();
-            
-            //Recenter the window
-            setLocationRelativeTo(null);
-        } else  // If the difficulty is still the same, just reset the values of every cell's properties
-            for (MinesweeperButton cell : cells) cell.reset();
 
-        banner.reset(gameManager.getDifficulty().getBombCount());
-        gameManager.reset();
-        gameManager.setPresetChanged(false);
+            // Recenter the window
+            setLocationRelativeTo(null);
+            gameManager.setPresetChanged(false);
+        }
     }
 
     private Consumer<ItemEvent> onGameDifficultyPresetChange() {

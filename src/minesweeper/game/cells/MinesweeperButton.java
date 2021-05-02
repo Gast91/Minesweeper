@@ -80,7 +80,7 @@ public class MinesweeperButton extends JButton {
 
     public Stream<MinesweeperButton> getNeighbors() {
         return Arrays.stream(neighborsPositions)
-                .mapToObj(Minesweeper.getInstance()::getCell);
+                .mapToObj(Minesweeper.gameGrid::getCell);
     }
 
     // Reveal the cell clicked by the user and change the visuals of the cell depending on its value
