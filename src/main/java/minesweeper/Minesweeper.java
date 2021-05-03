@@ -72,7 +72,6 @@ public class Minesweeper extends JFrame {
         final Difficulty newDifficulty = gameManager.getDifficulty();
         banner.reset(newDifficulty.getBombCount());
         gameGrid.reset(newDifficulty);
-        gameManager.reset();
         statusBar.reset();
 
         if (gameManager.hasPresetChanged()) {
@@ -82,9 +81,9 @@ public class Minesweeper extends JFrame {
 
             // Recenter the window
             setLocationRelativeTo(null);
-            gameManager.setPresetChanged(false);
             statusBar.update(newDifficulty.toString());
         }
+        gameManager.reset();
     }
 
     private Consumer<ItemEvent> onGameDifficultyPresetChange() {

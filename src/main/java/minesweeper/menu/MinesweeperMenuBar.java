@@ -1,5 +1,7 @@
 package minesweeper.menu;
 
+import minesweeper.Minesweeper;
+
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -7,9 +9,10 @@ import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 import java.awt.Component;
 import java.awt.event.KeyEvent;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static minesweeper.utility.Icon.ICON;
 
@@ -18,18 +21,15 @@ public class MinesweeperMenuBar extends JMenuBar {
     private DifficultyMenu difficultyMenu;
     private StatsMenu statsMenu;
 
-    private static final Path ABOUT_PATH = Path.of("src/main/resources/About.mine");
+    private static final String ABOUT_MESSAGE = readAboutFile();
 
     private MinesweeperMenuBar() {
         super();
     }
 
     private static String readAboutFile() {
-        try {
-            return Files.readString(ABOUT_PATH);
-        } catch (IOException ignored) {
-            return "File not found";
-        }
+        BufferedReader br = new BufferedReader(new InputStreamReader(Objects.requireNonNull(Minesweeper.class.getClassLoader().getResourceAsStream("About.mine"))));
+        return br.lines().collect(Collectors.joining(System.getProperty("line.separator")));
     }
 
     public void clearDifficultyMenuSelection() {
@@ -67,7 +67,7 @@ public class MinesweeperMenuBar extends JMenuBar {
             JMenuItem about = new JMenuItem("About");
             about.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
             // Clicking on "About" loads information from a txt file
-            about.addActionListener(ae -> JOptionPane.showMessageDialog(menuParent, readAboutFile(), "About", JOptionPane.PLAIN_MESSAGE, ICON.getIcon()));
+            about.addActionListener(ae -> JOptionPane.showMessageDialog(menuParent, ABOUT_MESSAGE, "About", JOptionPane.PLAIN_MESSAGE, ICON.getIcon()));
             gameMenu.add(about);
 
             menuBar.add(gameMenu);

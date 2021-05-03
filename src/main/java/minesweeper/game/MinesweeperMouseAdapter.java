@@ -36,7 +36,6 @@ public class MinesweeperMouseAdapter extends MouseAdapter {
     public void mouseReleased(MouseEvent e) {
         selected = (MinesweeperButton) e.getSource();
 
-        if (e.getButton() == MouseEvent.BUTTON2 && selected.isHighlighted())
-            gameManager.highlightNeighbors(selected, false);
+        if (e.getButton() == MouseEvent.BUTTON2) gameManager.highlightNeighbors(selected, false);
     }
 }

@@ -52,10 +52,6 @@ public class MinesweeperGameManager {
         return changedPreset;
     }
 
-    public void setPresetChanged(boolean changedPreset) {
-        this.changedPreset = changedPreset;
-    }
-
     public Difficulty getDifficulty() {
         return difficulty;
     }
@@ -96,11 +92,9 @@ public class MinesweeperGameManager {
     }
 
     public void highlightNeighbors(MinesweeperButton selected, boolean state) {
-        selected.setHighlighted(state);
-
         selected.getNeighbors()
                 .filter(MinesweeperButton::inInitialState)
-                .forEach(n -> n.getModel().setRollover(state));
+                .forEach(n -> n.setHighlighted(state));
     }
 
     // When an empty cell is clicked, check its eligible neighbors and whether they are already revealed or not and reveal them

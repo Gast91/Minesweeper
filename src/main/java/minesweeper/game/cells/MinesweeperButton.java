@@ -55,7 +55,9 @@ public class MinesweeperButton extends JButton {
     }
 
     public void setHighlighted(boolean highlighted) {
+        if (this.highlighted == highlighted) return;
         this.highlighted = highlighted;
+        getModel().setRollover(highlighted);
     }
 
     public int getPosition() {
