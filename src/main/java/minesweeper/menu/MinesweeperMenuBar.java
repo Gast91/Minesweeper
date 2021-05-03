@@ -1,6 +1,9 @@
 package minesweeper.menu;
 
 import minesweeper.Minesweeper;
+import minesweeper.difficulty.Difficulty;
+import minesweeper.difficulty.DifficultyPreset;
+import minesweeper.statusbar.GameStatus;
 
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -9,6 +12,8 @@ import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 import java.awt.Component;
 import java.awt.event.KeyEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Objects;
@@ -16,7 +21,7 @@ import java.util.stream.Collectors;
 
 import static minesweeper.utility.Icon.ICON;
 
-public class MinesweeperMenuBar extends JMenuBar {
+public class MinesweeperMenuBar extends JMenuBar implements PropertyChangeListener {
 
     private DifficultyMenu difficultyMenu;
     private StatsMenu statsMenu;
@@ -32,12 +37,17 @@ public class MinesweeperMenuBar extends JMenuBar {
         return br.lines().collect(Collectors.joining(System.getProperty("line.separator")));
     }
 
-    public void clearDifficultyMenuSelection() {
-        difficultyMenu.clearSelection();
-    }
-
-    public void setDifficultyMenuEnabled(boolean enabled) {
-        difficultyMenu.setEnabled(enabled);
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName().equals("difficulty")) {
+            if (((Difficulty) evt.getNewValue()).getType() == DifficultyPreset.CUSTOM)
+                difficultyMenu.clearSelection();
+        } else if (evt.getPropertyName().equals("gameStatus")) {
+            switch ((GameStatus) evt.getNewValue()) {
+                case WAITING, WON, LOST -> difficultyMenu.setEnabled(true);
+                case RUNNING -> difficultyMenu.setEnabled(false);
+            }
+        }
     }
 
     public static final class MenuBarBuilder {

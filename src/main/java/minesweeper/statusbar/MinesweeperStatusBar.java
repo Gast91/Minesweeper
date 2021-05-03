@@ -8,8 +8,10 @@ import javax.swing.JPanel;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import java.awt.Color;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
-public class MinesweeperStatusBar extends JPanel {
+public class MinesweeperStatusBar extends JPanel implements PropertyChangeListener {
 
     private final JLabel gameStatusLabel;
     private final JLabel currentDifficultyLabel;
@@ -31,16 +33,13 @@ public class MinesweeperStatusBar extends JPanel {
         add(currentDifficultyLabel);
     }
 
-    public void update(GameStatus gameStatus) {
-        gameStatusLabel.setText(gameStatus.toString());
-        gameStatusLabel.setForeground(gameStatus.getTextColor());
-    }
-
-    public void update(String difficulty) {
-        currentDifficultyLabel.setText(difficulty);
-    }
-
-    public void reset() {
-        update(GameStatus.WAITING);
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName().equals("gameStatus")) {
+            final GameStatus newGameStatus = (GameStatus) evt.getNewValue();
+            gameStatusLabel.setText(newGameStatus.toString());
+            gameStatusLabel.setForeground(newGameStatus.getTextColor());
+        } else if (evt.getPropertyName().equals("difficulty"))
+            currentDifficultyLabel.setText(evt.getNewValue().toString());
     }
 }

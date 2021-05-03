@@ -37,9 +37,8 @@ public class TimeIndicator extends JLabel {
         });
     }
 
-    public Duration stopTimer() {
+    public void stopTimer() {
         timer.stop();
-        return time;
     }
 
     public Duration getTime() {

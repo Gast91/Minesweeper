@@ -12,6 +12,7 @@ import minesweeper.game.MinesweeperGrid;
 import minesweeper.menu.DifficultyMenu;
 import minesweeper.menu.MinesweeperMenuBar;
 import minesweeper.menu.StatsMenu;
+import minesweeper.stats.GameStats;
 import minesweeper.statusbar.GameStatus;
 import minesweeper.statusbar.MinesweeperStatusBar;
 
@@ -19,30 +20,29 @@ import java.awt.BorderLayout;
 import java.awt.Font;
 import java.awt.event.ItemEvent;
 import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.function.Consumer;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
 
 import static minesweeper.utility.Icon.ICON;
 
-public class Minesweeper extends JFrame {
-    public static MinesweeperBanner banner;
-    public static MinesweeperMenuBar menuBar;
+public class Minesweeper extends JFrame implements PropertyChangeListener {
+    private static MinesweeperBanner banner;
     public static MinesweeperGrid gameGrid;
-    public static MinesweeperStatusBar statusBar;
     private static final MinesweeperGameManager gameManager = MinesweeperGameManager.getInstance();
 
     public static void main(String[] args) {
         new Minesweeper().setVisible(true);
     }
 
-    public Minesweeper()
-    {
+    public Minesweeper() {
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Minesweeper");
         setIconImage((ICON.getImage()));
 
-        menuBar = new MinesweeperMenuBar.MenuBarBuilder()
+        MinesweeperMenuBar menuBar = new MinesweeperMenuBar.MenuBarBuilder()
                 .withDifficultyMenu(new DifficultyMenu(this, DifficultyPreset.EXPERT, onGameDifficultyPresetChange(), this::restart))
                 .withStatsMenu(new StatsMenu(this))
                 .build(this);
@@ -59,8 +59,10 @@ public class Minesweeper extends JFrame {
         gameGrid = new MinesweeperGrid(gameManager.getDifficulty());
         add(gameGrid);
 
-        statusBar = new MinesweeperStatusBar(GameStatus.WAITING, gameManager.getDifficulty().toString());
+        MinesweeperStatusBar statusBar = new MinesweeperStatusBar(GameStatus.WAITING, gameManager.getDifficulty().toString());
         add(statusBar, BorderLayout.SOUTH);
+
+        gameManager.addPropertyChangeListener(this, menuBar, banner, gameGrid, statusBar);
 
         pack();
         
@@ -68,11 +70,19 @@ public class Minesweeper extends JFrame {
         setLocationRelativeTo(null); 
     }
 
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName().equals("difficulty") || evt.getPropertyName().equals("bombMark")) return;
+        switch ((GameStatus) evt.getNewValue()) {
+            case WON  -> GameStats.getInstance().updateStats(true, gameManager.getDifficulty().getType(), banner.getTime());
+            case LOST -> GameStats.getInstance().updateStats(false, gameManager.getDifficulty().getType(), banner.getTime());
+        }
+    }
+
     private void restart() {
         final Difficulty newDifficulty = gameManager.getDifficulty();
         banner.reset(newDifficulty.getBombCount());
         gameGrid.reset(newDifficulty);
-        statusBar.reset();
 
         if (gameManager.hasPresetChanged()) {
             //revalidate();
@@ -81,7 +91,6 @@ public class Minesweeper extends JFrame {
 
             // Recenter the window
             setLocationRelativeTo(null);
-            statusBar.update(newDifficulty.toString());
         }
         gameManager.reset();
     }

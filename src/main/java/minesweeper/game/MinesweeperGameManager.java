@@ -1,32 +1,27 @@
 package minesweeper.game;
 
-import minesweeper.Minesweeper;
-import minesweeper.banner.BombIndicator;
 import minesweeper.difficulty.Difficulty;
 import minesweeper.difficulty.DifficultyPreset;
-import minesweeper.game.cells.CellValue;
 import minesweeper.game.cells.MinesweeperButton;
-import minesweeper.stats.GameStats;
 import minesweeper.statusbar.GameStatus;
 
-import java.awt.Color;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Random;
 
-import static java.util.function.Predicate.not;
-import static minesweeper.utility.Icon.*;
+import static minesweeper.utility.Icon.FLAG;
 
 public class MinesweeperGameManager {
 
     private int bombsFlagged = 0;
     private Difficulty difficulty = DifficultyPreset.EXPERT;
+    private int potentialBombsLeft = difficulty.getBombCount();
     private GameStatus gameStatus = GameStatus.WAITING;
-    private int[] bombLoc;
     private final ArrayList<MinesweeperButton> emptyCells = new ArrayList<>();
     private boolean revealingNeighbors = false, changedPreset = false;
 
+    private final PropertyChangeSupport support = new PropertyChangeSupport(this);
     private static MinesweeperGameManager instance = null;
 
     public static MinesweeperGameManager getInstance() {
@@ -45,7 +40,7 @@ public class MinesweeperGameManager {
     }
 
     public boolean hasMarkedAll() {
-        return bombsFlagged == difficulty.getBombCount();
+        return bombsFlagged == difficulty.getBombCount() && potentialBombsLeft == 0;
     }
 
     public boolean hasPresetChanged() {
@@ -57,38 +52,31 @@ public class MinesweeperGameManager {
     }
 
     public void setDifficulty(Difficulty difficulty) {
-        if (difficulty.getType() == DifficultyPreset.CUSTOM) {
-            Minesweeper.menuBar.clearDifficultyMenuSelection();
-            this.difficulty = difficulty;
-            changedPreset = true;
-        } else if (this.difficulty != difficulty) {
-            this.difficulty = difficulty;
-            changedPreset = true;
-        }
+        if (difficulty.getType() == DifficultyPreset.CUSTOM || this.difficulty != difficulty)
+            notifyDifficultyChanged(difficulty);
+        potentialBombsLeft = difficulty.getBombCount();
+    }
 
+    public void addPropertyChangeListener(PropertyChangeListener... propertyChangeListener) {
+        for (PropertyChangeListener pcl : propertyChangeListener)
+            support.addPropertyChangeListener(pcl);
     }
 
     public void toggleFlag(MinesweeperButton selected) {
-        BombIndicator bi = Minesweeper.banner.getBombIndicator();
         if (selected.isFlagged()) {
-            bi.increment();
+            ++potentialBombsLeft;
             selected.setIcon(null);
             if (selected.isBomb()) --bombsFlagged;
         }
         else if (!selected.isRevealed()) {
-            bi.decrement();
+            --potentialBombsLeft;
             selected.setIcon(FLAG.getIcon());
             if (selected.isBomb()) ++bombsFlagged;
 
             // If the user has marked all the bombs (and no extra!) they win
-            if (hasMarkedAll() && !bi.counterIsNegative()) {
-                bi.setForeground(new Color(0,153,0));
-                Minesweeper.banner.getStatusIndicator().setIcon(WIN.getIcon());
-                GameStats.getInstance().updateStats(true, difficulty.getType(), Minesweeper.banner.getTimeIndicator().stopTimer());
-                Minesweeper.menuBar.setDifficultyMenuEnabled(true);
-                Minesweeper.statusBar.update(gameStatus = GameStatus.WON);
-            }
+            if (hasMarkedAll()) notifyGameStatusChanged(GameStatus.WON);
         }
+        support.firePropertyChange("bombMark", null, potentialBombsLeft);
     }
 
     public void highlightNeighbors(MinesweeperButton selected, boolean state) {
@@ -100,7 +88,6 @@ public class MinesweeperGameManager {
     // When an empty cell is clicked, check its eligible neighbors and whether they are already revealed or not and reveal them
     public void revealNeighbors(MinesweeperButton cell) {
         if (revealingNeighbors) return;
-
         // Flag to avoid infinite recursion over the same elements in the list
         revealingNeighbors = true;
 
@@ -135,71 +122,36 @@ public class MinesweeperGameManager {
         selected.getNeighbors()
                 .filter(MinesweeperButton::inInitialState)
                 .forEach(n -> {
-                    if (n.isBomb()) gameOver(n);
+                    if (n.isBomb()) notifyGameStatusChanged(GameStatus.LOST, selected);
                     else n.reveal();
                 });
     }
 
     public void checkAndReveal(MinesweeperButton selected) {
-        if (gameStatus == GameStatus.WAITING) {
-            Minesweeper.menuBar.setDifficultyMenuEnabled(false);
-            generateBombs(selected);
-            selected.reveal();
-            Minesweeper.banner.getTimeIndicator().startTimer();
-            Minesweeper.statusBar.update(gameStatus = GameStatus.RUNNING);
-        } else if (selected.isBomb()) gameOver(selected);
+        if (gameStatus == GameStatus.WAITING) notifyGameStatusChanged(GameStatus.RUNNING, selected);
+        else if (selected.isBomb())           notifyGameStatusChanged(GameStatus.LOST, selected);
         else selected.reveal();
     }
 
     public void reset() {
-        gameStatus = GameStatus.WAITING;
         bombsFlagged = 0;
-
-        Minesweeper.menuBar.setDifficultyMenuEnabled(true);
+        potentialBombsLeft = difficulty.getBombCount();
+        notifyGameStatusChanged(GameStatus.WAITING);
     }
 
-    private void generateBombs(MinesweeperButton selected) {
-        bombLoc = new Random()
-                .ints(0, difficulty.getDimensions().toArea())
-                .filter(loc -> isValidBombLocation(selected, loc))
-                .distinct()
-                .limit(difficulty.getBombCount())
-                .toArray();
-
-        configureCells();
+    private void notifyGameStatusChanged(GameStatus gameStatus) {
+        support.firePropertyChange("gameStatus", this.gameStatus, gameStatus);
+        this.gameStatus = gameStatus;
     }
 
-    // Checks if the number generated is a valid location for a bomb
-    private boolean isValidBombLocation(MinesweeperButton selected, int r)  {
-        // First selection cannot be a bomb
-        if (selected.getPosition() == r)  return false;
-
-        // First selection neighbors must not be bombs to ensure a better start
-        for (int n : selected.getNeighborsPositions())
-            if (n == r) return false;
-
-        return true;
+    private void notifyGameStatusChanged(GameStatus gameStatus, MinesweeperButton selected) {
+        support.firePropertyChange("gameStatus", selected, gameStatus);
+        this.gameStatus = gameStatus;
     }
 
-    // Update each cell's value depending on how many adjacent bombs there are
-    private void configureCells() {
-        Arrays.stream(bombLoc)
-                .forEach( bl -> {
-                    MinesweeperButton currentCell = Minesweeper.gameGrid.getCell(bl);
-                    currentCell.setValue(CellValue.BOMB);
-                    currentCell.getNeighbors()
-                            .filter(not(MinesweeperButton::isBomb))
-                            .forEach(MinesweeperButton::incrementValue);
-                });
-    }
-
-    // Reveal all the bombs and stop the game if a bomb is revealed
-    private void gameOver(MinesweeperButton selected) {
-        selected.setIcon(BOMB_EXPLODED.getIcon());
-        for (int bl : bombLoc) Minesweeper.gameGrid.getCell(bl).reveal();
-        Minesweeper.banner.getStatusIndicator().setIcon(LOSE.getIcon());
-        GameStats.getInstance().updateStats(false, difficulty.getType(), Minesweeper.banner.getTimeIndicator().stopTimer());
-        Minesweeper.menuBar.setDifficultyMenuEnabled(true);
-        Minesweeper.statusBar.update(gameStatus = GameStatus.LOST);
+    private void notifyDifficultyChanged(Difficulty difficulty) {
+        support.firePropertyChange("difficulty", this.difficulty, difficulty);
+        this.difficulty = difficulty;
+        changedPreset = true;
     }
 }

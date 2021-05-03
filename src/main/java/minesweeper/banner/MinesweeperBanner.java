@@ -1,13 +1,21 @@
 package minesweeper.banner;
 
+import minesweeper.statusbar.GameStatus;
+
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.time.Duration;
 
-public class MinesweeperBanner extends JPanel {
+import static minesweeper.utility.Icon.WIN;
+import static minesweeper.utility.Icon.LOSE;
+
+public class MinesweeperBanner extends JPanel implements PropertyChangeListener {
 
     private TimeIndicator timeIndicator;
     private StatusIndicator statusIndicator;
@@ -17,20 +25,33 @@ public class MinesweeperBanner extends JPanel {
         super(new GridBagLayout());
     }
 
-    public TimeIndicator getTimeIndicator() {
-        return timeIndicator;
-    }
-    public StatusIndicator getStatusIndicator() {
-        return statusIndicator;
-    }
-    public BombIndicator getBombIndicator() {
-        return bombIndicator;
+    public Duration getTime() {
+        return timeIndicator.getTime();
     }
 
     public void reset(int bombCount) {
         timeIndicator.reset();
         bombIndicator.reset(bombCount);
         statusIndicator.reset();
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName().equals("gameStatus")) {
+            switch ((GameStatus) evt.getNewValue()) {
+                case RUNNING -> timeIndicator.startTimer();
+                case WON -> {
+                    timeIndicator.stopTimer();
+                    statusIndicator.setIcon(WIN.getIcon());
+                    bombIndicator.setForeground(new Color(0, 153, 0));
+                }
+                case LOST -> {
+                    timeIndicator.stopTimer();
+                    statusIndicator.setIcon(LOSE.getIcon());
+                }
+            }
+        } else if (evt.getPropertyName().equals("bombMark"))
+            bombIndicator.setText(Integer.toString((Integer) evt.getNewValue()));
     }
 
     public static final class BannerBuilder {

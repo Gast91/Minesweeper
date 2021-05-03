@@ -20,18 +20,6 @@ public class BombIndicator extends JLabel {
         setFont(font);
     }
 
-    public boolean counterIsNegative() {
-        return Integer.parseInt(getText()) < 0;
-    }
-
-    public void increment() {
-        setText(Integer.toString(Integer.parseInt(getText()) + 1));
-    }
-
-    public void decrement() {
-        setText(Integer.toString(Integer.parseInt(getText()) - 1));
-    }
-
     public void reset(int newBombCount) {
         setForeground(Color.RED);
         setText(Integer.toString(newBombCount));
