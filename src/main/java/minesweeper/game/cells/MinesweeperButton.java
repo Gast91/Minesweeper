@@ -1,12 +1,11 @@
 package minesweeper.game.cells;
 
-import minesweeper.Minesweeper;
 import minesweeper.game.MinesweeperGameManager;
 
 import javax.swing.JButton;
-
 import java.awt.Color;
 import java.util.Arrays;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static minesweeper.utility.Icon.*;
@@ -17,6 +16,7 @@ public class MinesweeperButton extends JButton {
     private final int position;
     private CellValue value;
     private int[] neighborsPositions;
+    private static Function<Integer, MinesweeperButton> getCell;
 
     public MinesweeperButton(int position) {
         setPreferredSize(new java.awt.Dimension(42,40));
@@ -24,6 +24,10 @@ public class MinesweeperButton extends JButton {
         value = CellValue.EMPTY;
         this.position = position;
         findNeighborPositions();
+    }
+
+    public static void addNeighborCallback(Function<Integer, MinesweeperButton> callback) {
+        getCell = callback;
     }
 
     public boolean isBomb() {
@@ -82,7 +86,7 @@ public class MinesweeperButton extends JButton {
 
     public Stream<MinesweeperButton> getNeighbors() {
         return Arrays.stream(neighborsPositions)
-                .mapToObj(Minesweeper.gameGrid::getCell);
+                .mapToObj(getCell::apply);
     }
 
     // Reveal the cell clicked by the user and change the visuals of the cell depending on its value

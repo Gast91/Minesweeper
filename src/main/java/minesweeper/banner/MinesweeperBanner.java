@@ -1,5 +1,6 @@
 package minesweeper.banner;
 
+import minesweeper.difficulty.Difficulty;
 import minesweeper.statusbar.GameStatus;
 
 import javax.swing.BorderFactory;
@@ -52,6 +53,7 @@ public class MinesweeperBanner extends JPanel implements PropertyChangeListener 
             }
         } else if (evt.getPropertyName().equals("bombMark"))
             bombIndicator.setText(Integer.toString((Integer) evt.getNewValue()));
+        else reset(((Difficulty) evt.getNewValue()).getBombCount());
     }
 
     public static final class BannerBuilder {

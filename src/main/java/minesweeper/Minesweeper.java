@@ -5,7 +5,6 @@ import minesweeper.banner.MinesweeperBanner;
 import minesweeper.banner.StatusIndicator;
 import minesweeper.banner.StatusIndicatorClickedListener;
 import minesweeper.banner.TimeIndicator;
-import minesweeper.difficulty.Difficulty;
 import minesweeper.difficulty.DifficultyPreset;
 import minesweeper.game.MinesweeperGameManager;
 import minesweeper.game.MinesweeperGrid;
@@ -30,7 +29,7 @@ import static minesweeper.utility.Icon.ICON;
 
 public class Minesweeper extends JFrame implements PropertyChangeListener {
     private static MinesweeperBanner banner;
-    public static MinesweeperGrid gameGrid;
+    private static MinesweeperGrid gameGrid;
     private static final MinesweeperGameManager gameManager = MinesweeperGameManager.getInstance();
 
     public static void main(String[] args) {
@@ -74,22 +73,18 @@ public class Minesweeper extends JFrame implements PropertyChangeListener {
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName().equals("difficulty") || evt.getPropertyName().equals("bombMark")) return;
         switch ((GameStatus) evt.getNewValue()) {
+            case WAITING -> banner.reset(gameManager.getDifficulty().getBombCount());
             case WON  -> GameStats.getInstance().updateStats(true, gameManager.getDifficulty().getType(), banner.getTime());
             case LOST -> GameStats.getInstance().updateStats(false, gameManager.getDifficulty().getType(), banner.getTime());
         }
     }
 
     private void restart() {
-        final Difficulty newDifficulty = gameManager.getDifficulty();
-        banner.reset(newDifficulty.getBombCount());
-        gameGrid.reset(newDifficulty);
-
+        gameGrid.reset(gameManager.getDifficulty());
         if (gameManager.hasPresetChanged()) {
-            //revalidate();
             repaint();
             pack();
 
-            // Recenter the window
             setLocationRelativeTo(null);
         }
         gameManager.reset();

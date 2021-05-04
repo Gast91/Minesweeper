@@ -13,6 +13,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import static java.util.function.Predicate.not;
@@ -30,10 +31,6 @@ public class MinesweeperGrid extends JPanel implements PropertyChangeListener {
         setBorder(BorderFactory.createMatteBorder(3, 3, 3, 3, Color.BLACK));
     }
 
-    public MinesweeperButton getCell(int position) {
-        return cells[position];
-    }
-
     public void reset(Difficulty difficulty) {
         if (this.difficulty != difficulty) {
             this.difficulty = difficulty;
@@ -44,6 +41,8 @@ public class MinesweeperGrid extends JPanel implements PropertyChangeListener {
             for (MinesweeperButton cell : cells) cell.reset();
     }
 
+    private final Function<Integer, MinesweeperButton> getCell = position -> cells[position];
+
     private void createGrid() {
         setLayout(new GridLayout(difficulty.getRows(), difficulty.getCols()));
         cells = IntStream.range(0, difficulty.getDimensions().toArea())
@@ -53,6 +52,7 @@ public class MinesweeperGrid extends JPanel implements PropertyChangeListener {
                     add(cell);
                 })
                 .toArray(MinesweeperButton[]::new);
+        MinesweeperButton.addNeighborCallback(getCell);
     }
 
     private void generateBombs(MinesweeperButton selected) {

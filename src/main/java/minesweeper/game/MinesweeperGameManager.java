@@ -137,6 +137,7 @@ public class MinesweeperGameManager {
         bombsFlagged = 0;
         potentialBombsLeft = difficulty.getBombCount();
         notifyGameStatusChanged(GameStatus.WAITING);
+        changedPreset = false;
     }
 
     private void notifyGameStatusChanged(GameStatus gameStatus) {
